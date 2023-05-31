@@ -15,7 +15,6 @@ import datetime
 import time
 from torchvision.utils import save_image, make_grid
 from torchvision import datasets
-from torch.autograd import Variable
 
 def toRGB(image):
 	rgbImage = Image.new('RGB', image.size)
@@ -72,7 +71,7 @@ class ResidualBlock(nn.Module):
 			nn.InstanceNorm2d(inFeatures),
 		)
 	def forward(self, x):
-		return x + self.block(x)
+		return x + self.block(x.to(device))
 
 class GeneratorResNet(nn.Module):
 	def __init__(self, inputShape, numResidualBlocks):
@@ -112,7 +111,7 @@ class GeneratorResNet(nn.Module):
 		self.model = nn.Sequential(*model)
 	
 	def forward(self, x):
-		return self.model(x)
+		return self.model(x.to(device))
 
 class Discriminator(nn.Module):
 	def __init__(self, inputShape):
@@ -137,7 +136,7 @@ class Discriminator(nn.Module):
 		return layers
 
 	def forward(self, img):
-		return self.model(img)
+		return self.model(img.to(device))
 
 DatasetName = 'selfie2anime'
 Channels = 3
@@ -150,7 +149,6 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-#NCPUs = 1
 BatchSize = 1
 SampleInterval = 10
 CheckPointInterval = 1
@@ -169,14 +167,21 @@ DA = Discriminator(inputShape)
 DB = Discriminator(inputShape)
 
 cuda = torch.cuda.is_available()
+mps = torch.backends.mps.is_available()
 if cuda:
-	GAB = GAB.cuda()
-	GBA = GBA.cuda()
-	DA = DA.cuda()
-	DB = DB.cuda
-	criterionGAN.cuda()
-	criterionCycle.cuda()
-	criterionIdentity.cuda()
+	device = torch.device('cuda')
+	torch.cuda.empty_cache()
+elif mps:
+	device = torch.device('mps')
+else:
+	device = torch.device('cpu')
+GAB = GAB.to(device)
+GBA = GBA.to(device)
+DA = DA.to(device)
+DB = DB.to(device)
+criterionGAN.to(device)
+criterionCycle.to(device)
+criterionIdentity.to(device)
 
 GAB.apply(initWeightsNormal)
 GBA.apply(initWeightsNormal)
@@ -208,7 +213,7 @@ lrSchedulerDB = torch.optim.lr_scheduler.LambdaLR(
 	optimizerDB, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
 )
 
-Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
+#Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
 
 class ReplayBuffer:
 	def __init__(self, maxSize=50):
@@ -227,7 +232,7 @@ class ReplayBuffer:
 					self.data[i] = element
 			else:
 				toReturn.append(element)
-		return Variable(torch.cat(toReturn))
+		return torch.cat(toReturn)
 
 fakeABuffer = ReplayBuffer()
 fakeBBuffer = ReplayBuffer()
@@ -244,23 +249,21 @@ dataLoader = DataLoader(
 	ImageDataset(f"dataset/{DatasetName}", _transforms=_transforms, unaligned=True),
 	batch_size=BatchSize,
 	shuffle=True,
-#	num_workers=NCPUs,
 )
 valDataLoader = DataLoader(
 	ImageDataset(f'dataset/{DatasetName}', 
 		_transforms=_transforms, unaligned=True, mode='test'),
 	batch_size=5,
 	shuffle=True,
-#	num_workers=1,
 )
 
 def sampleImages(batchesDone):
 	imgs = next(iter(valDataLoader))
 	GAB.eval()
 	GBA.eval()
-	realA = Variable(imgs['A'].type(Tensor))
+	realA = imgs['A'].to(device)
 	fakeB = GAB(realA)
-	realB = Variable(imgs['B'].type(Tensor))
+	realB = imgs['B'].to(device)
 	fakeA = GBA(realB)
 
 	realA = make_grid(realA, nrow=5, normalize=True)
@@ -274,13 +277,16 @@ def sampleImages(batchesDone):
 prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
 	for i, batch in enumerate(dataLoader):
-		realA = Variable(batch['A'].type(Tensor))
-		realB = Variable(batch['B'].type(Tensor))
+		# random learning
+		if random.randrange(1000) < 700: continue
 
-		valid = Variable(Tensor(np.ones((realA.size(0), *DA.outputShape))),
-			requires_grad=False)
-		fake = Variable(Tensor(np.ones((realA.size(0), *DA.outputShape))),
-			requires_grad=False)
+		realA = batch['A'].to(device)
+		realB = batch['B'].to(device)
+
+		t = np.ones((realA.size(0), *DA.outputShape), dtype=np.float32)
+		valid = torch.from_numpy(t).to(device)
+		t = np.ones((realA.size(0), *DA.outputShape), dtype=np.float32)
+		fake = torch.from_numpy(t).to(device)
 
 		GAB.train()
 		GBA.train()
@@ -346,7 +352,7 @@ for epoch in range(InitEpoch, Epochs):
 		if batchesDone%SampleInterval == 0:
 			sampleImages(batchesDone)
 
-	lrSchedulerG.stop()
+	lrSchedulerG.step()
 	lrSchedulerDA.step()
 	lrSchedulerDB.step()
 
