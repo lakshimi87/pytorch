@@ -285,6 +285,7 @@ if InitEpoch > 0:
 	GBA.load_state_dict(torch.load(f"saved_models/{DatasetName}/GBA{InitEpoch}.pth"))
 	DA.load_state_dict(torch.load(f"saved_models/{DatasetName}/DA{InitEpoch}.pth"))
 	DB.load_state_dict(torch.load(f"saved_models/{DatasetName}/DB{InitEpoch}.pth"))
+	InitEpoch += 1
 
 prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
