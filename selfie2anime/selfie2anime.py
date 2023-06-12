@@ -150,7 +150,7 @@ DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
 BatchSize = 1
-SampleInterval = 10
+SampleInterval = 100
 CheckPointInterval = 1
 
 os.makedirs(f"images/{DatasetName}", exist_ok=True)
@@ -273,6 +273,18 @@ def sampleImages(batchesDone):
 
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 	save_image(imageGrid, f"images/{DatasetName}/{batchesDone}.png", normalize=False)
+
+for d in os.listdir(f"saved_models/{DatasetName}/"):
+	if not d.startswith("GAB") or not d.endswith(".pth"): continue
+	epoch = int(d[3:-4])
+	if epoch > InitEpoch: InitEpoch = epoch
+
+if InitEpoch > 0:
+	print(f"Load epoch {InitEpoch}....")
+	GAB.load_state_dict(torch.load(f"saved_models/{DatasetName}/GAB{InitEpoch}.pth"))
+	GBA.load_state_dict(torch.load(f"saved_models/{DatasetName}/GBA{InitEpoch}.pth"))
+	DA.load_state_dict(torch.load(f"saved_models/{DatasetName}/DA{InitEpoch}.pth"))
+	DB.load_state_dict(torch.load(f"saved_models/{DatasetName}/DB{InitEpoch}.pth"))
 
 prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
