@@ -154,7 +154,7 @@ SampleInterval = 100
 CheckPointInterval = 1
 
 os.makedirs(f"images/{DatasetName}", exist_ok=True)
-os.makedirs(f"saved/{DatasetName}", exist_ok=True)
+os.makedirs(f"saved_models/{DatasetName}", exist_ok=True)
 
 criterionGAN = nn.MSELoss()
 criterionCycle = nn.L1Loss()
@@ -298,7 +298,7 @@ for epoch in range(InitEpoch, Epochs):
 
 		t = np.ones((realA.size(0), *DA.outputShape), dtype=np.float32)
 		valid = torch.from_numpy(t).to(device)
-		t = np.ones((realA.size(0), *DA.outputShape), dtype=np.float32)
+		t = np.zeros((realA.size(0), *DA.outputShape), dtype=np.float32)
 		fake = torch.from_numpy(t).to(device)
 
 		GAB.train()
