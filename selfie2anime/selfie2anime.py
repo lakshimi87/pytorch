@@ -150,7 +150,7 @@ DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
 BatchSize = 1
-SampleInterval = 100
+SampleInterval = 200
 CheckPointInterval = 1
 
 os.makedirs(f"images/{DatasetName}", exist_ok=True)
@@ -291,7 +291,7 @@ prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
 	for i, batch in enumerate(dataLoader):
 		# random learning
-		if random.randrange(1000) < 500: continue
+		if random.randrange(1000) < 300: continue
 
 		realA = batch['A'].to(device)
 		realB = batch['B'].to(device)
