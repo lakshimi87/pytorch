@@ -305,7 +305,7 @@ for epoch in range(InitEpoch, Epochs):
 		GBA.train()
 		optimizerG.zero_grad()
 
-		lossIDA = criterionIdentity(GAB(realA), realA)
+		lossIDA = criterionIdentity(GBA(realA), realA)
 		lossIDB = criterionIdentity(GAB(realB), realB)
 		lossIdentity = (lossIDA + lossIDB)/2
 
@@ -315,7 +315,7 @@ for epoch in range(InitEpoch, Epochs):
 		lossGANBA = criterionGAN(DA(fakeA), valid)
 		lossGAN = (lossGANAB + lossGANBA)/2
 
-		recovA = GAB(fakeB)
+		recovA = GBA(fakeB)
 		lossCycleA = criterionCycle(recovA, realA)
 		recovB = GAB(fakeA)
 		lossCycleB = criterionCycle(recovB, realB)
@@ -329,7 +329,6 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerDA.zero_grad()
 
 		lossReal = criterionGAN(DA(realA), valid)
-
 		_fakeA = fakeABuffer.pushAndPop(fakeA)
 		lossFake = criterionGAN(DA(_fakeA.detach()), fake)
 
@@ -340,7 +339,6 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerDB.zero_grad()
 
 		lossReal = criterionGAN(DB(realB), valid)
-
 		_fakeB = fakeBBuffer.pushAndPop(fakeB)
 		lossFake = criterionGAN(DB(_fakeB.detach()), fake)
 
