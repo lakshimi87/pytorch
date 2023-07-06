@@ -253,7 +253,7 @@ dataLoader = DataLoader(
 valDataLoader = DataLoader(
 	ImageDataset(f'dataset/{DatasetName}', 
 		_transforms=_transforms, unaligned=True, mode='test'),
-	batch_size=5,
+	batch_size=7,
 	shuffle=True,
 )
 
@@ -266,10 +266,10 @@ def sampleImages(batchesDone):
 	realB = imgs['B'].to(device)
 	fakeA = GBA(realB)
 
-	realA = make_grid(realA, nrow=5, normalize=True)
-	realB = make_grid(realB, nrow=5, normalize=True)
-	fakeA = make_grid(fakeA, nrow=5, normalize=True)
-	fakeB = make_grid(fakeB, nrow=5, normalize=True)
+	realA = make_grid(realA, nrow=7, normalize=True)
+	realB = make_grid(realB, nrow=7, normalize=True)
+	fakeA = make_grid(fakeA, nrow=7, normalize=True)
+	fakeB = make_grid(fakeB, nrow=7, normalize=True)
 
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 	save_image(imageGrid, f"images/{DatasetName}/{batchesDone}.png", normalize=False)
