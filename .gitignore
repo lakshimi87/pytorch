@@ -161,5 +161,6 @@ cython_debug/
 # dataset
 example/data
 selfie2anime/data
+selfie2anime/images
 
 .DS_Store
