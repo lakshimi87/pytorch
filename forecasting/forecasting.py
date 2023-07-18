@@ -78,10 +78,10 @@ dataloader = DataLoader(dataset,
                         drop_last=True)
 # 설정값
 data_dim = 5
-hidden_dim = 10 
+hidden_dim = 16 
 output_dim = 1 
 learning_rate = 0.01
-nb_epochs = 100
+nb_epochs = 200
 
 class Net(nn.Module):
     # # 기본변수, layer를 초기화해주는 생성자
@@ -93,7 +93,7 @@ class Net(nn.Module):
         self.layers = layers
         
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers=layers,
-                            # dropout = 0.1,
+                            dropout = 0.1,
                             batch_first=True)
         self.fc = nn.Linear(hidden_dim, output_dim, bias = True) 
         
@@ -123,7 +123,6 @@ def train_model(model, train_df, num_epochs = None, lr = None, verbose = 10, pat
         total_batch = len(train_df)
 
         for batch_idx, samples in enumerate(train_df):
-
             x_train, y_train = samples
 
             # seq별 hidden state reset
@@ -145,22 +144,20 @@ def train_model(model, train_df, num_epochs = None, lr = None, verbose = 10, pat
         train_hist[epoch] = avg_cost
 
         if epoch % verbose == 0:
-            print('Epoch:', '%04d' % (epoch), 'train loss :', '{:.4f}'.format(avg_cost))
+            print(f'Epoch: {epoch:04} train loss : {avg_cost:.4f}')
 
         # patience번째 마다 early stopping 여부 확인
-        if (epoch % patience == 0) & (epoch != 0):
-
+        if (epoch % patience == 0) and (epoch != 0):
             # loss가 커졌다면 early stop
             if train_hist[epoch-patience] < train_hist[epoch]:
                 print('\n Early Stopping')
-
-                break
+                #break
 
     return model.eval(), train_hist
 
 # 모델 학습
 net = Net(data_dim, hidden_dim, seq_length, output_dim, 1).to(device)
-model, train_hist = train_model(net, dataloader, num_epochs = nb_epochs, lr = learning_rate, verbose = 20, patience = 10)
+model, train_hist = train_model(net, dataloader, num_epochs = nb_epochs, lr = learning_rate, verbose = 10, patience = 10)
 
 # epoch별 손실값
 fig = plt.figure(figsize=(10, 4))
@@ -181,9 +178,7 @@ model.eval()
 with torch.no_grad():
     pred = []
     for pr in range(len(testX_tensor)):
-
         model.reset_hidden_state()
-
         predicted = model(torch.unsqueeze(testX_tensor[pr], 0))
         predicted = torch.flatten(predicted).item()
         pred.append(predicted)
@@ -195,11 +190,11 @@ with torch.no_grad():
 def MAE(true, pred):
     return np.mean(np.abs(true-pred))
 
-print('MAE SCORE : ', MAE(pred_inverse, testY_inverse))
+print(f'MAE SCORE : {MAE(pred_inverse, testY_inverse)}')
 
 fig = plt.figure(figsize=(8,3))
 plt.plot(np.arange(len(pred_inverse)), pred_inverse, label = 'pred')
 plt.plot(np.arange(len(testY_inverse)), testY_inverse, label = 'true')
-plt.title("Loss plot")
+plt.title("prediction plot")
 plt.show()
 
