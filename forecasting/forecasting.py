@@ -51,7 +51,7 @@ def build_dataset(time_series, seq_length):
     dataX = []
     dataY = []
     for i in range(0, len(time_series)-seq_length):
-        _x = time_series[i:i+seq_length, :]
+        _x = time_series[i:i+seq_length, :-1]
         _y = time_series[i+seq_length, [-1]]
         # print(_x, "-->",_y)
         dataX.append(_x)
@@ -77,7 +77,7 @@ dataloader = DataLoader(dataset,
                         shuffle=True,
                         drop_last=True)
 # 설정값
-data_dim = 5
+data_dim = 4
 hidden_dim = 16 
 output_dim = 1 
 learning_rate = 0.01
