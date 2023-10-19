@@ -74,7 +74,7 @@ showImage(outputImage(label, y), label)
 validationData = getFileList(TestImagePath)
 
 BatchSize = 16
-EpochNum = 500
+EpochNum = 100
 LearningRate = 0.0001
 ImageWidth, ImageHeight = x.shape[1], x.shape[2]
 OutputSize = len(y)
@@ -115,7 +115,7 @@ class CNN(nn.Module):
 		a = self.norm16(a)
 		b = self.conv12(x)
 		b = self.norm16(b)
-		x = a+b
+		x = a*0.9+b*0.1
 		x = F.relu(x)
 		x = self.dropout1(x)
 		x = F.max_pool2d(x, 2)
@@ -134,7 +134,8 @@ class CNN(nn.Module):
 model = CNN().to(device)
 optimizer = optim.Adam(model.parameters(), lr = LearningRate)
 #criterion = nn.HuberLoss()
-criterion = nn.MSELoss()
+#criterion = nn.MSELoss()
+criterion = nn.SmoothL1Loss()
 print(model)
 
 for epoch in range(EpochNum):
