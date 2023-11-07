@@ -55,7 +55,7 @@ def getFileList(root):
 			
 df = pd.read_csv(OutputDataPath)
 df['image']=np.array([f"{TrainImagePath}/{idx}.jpg" for idx in range(len(df))])
-df.dropna(axis=0, inplace=True)
+print(f"total data count : {len(df)}")
 xTrain, xTest = train_test_split(df, test_size=0.2)
 xTrain.reset_index(drop=True, inplace=True)
 xTest.reset_index(drop=True, inplace=True)

@@ -11,7 +11,7 @@ device = torch.device('cuda' if isCuda else 'cpu')
 print(f'Current cuda device is {device}')
 
 BatchSize = 50
-EpochNum = 15
+EpochNum = 10
 LearningRate = 0.0001
 
 trainData = datasets.MNIST(root = './data', train = True, download = True,
@@ -55,6 +55,13 @@ class CNN(nn.Module):
 		x = self.fc2(x)
 		output = F.log_softmax(x, dim = 1)
 		return output
+	def getFeatures(self, x):
+		x = self.conv1(x)
+		x = F.relu(x)
+		x = self.conv2(x)
+		x = F.relu(x)
+		x = F.max_pool2d(x, 2)
+		return x
 
 model = CNN().to(device)
 optimizer = optim.Adam(model.parameters(), lr = LearningRate)
@@ -85,3 +92,10 @@ for data, target in testLoader:
 	correct += prediction.eq(target.data).sum()
 
 print(f'Accuracy: {100*correct/len(testLoader.dataset):.2f}%')
+
+data, target = testData[0]
+data.reshape(1, -1)
+data = data.to(device)
+output = model.getFeatures(data).to(torch.device('cpu')).detach().numpy()
+plt.imshow(output[0])
+plt.show()

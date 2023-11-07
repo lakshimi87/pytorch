@@ -16,11 +16,22 @@ import time
 from torchvision.utils import save_image, make_grid
 from torchvision import datasets
 
+# H/W acceleration
+if torch.cuda.is_available():
+	device = torch.device('cuda')
+	torch.cuda.empty_cache()
+elif torch.backends.mps.is_available():
+	device = torch.device('mps')
+else:
+	device = torch.device('cpu')
+
+# convert image to RGB
 def toRGB(image):
 	rgbImage = Image.new('RGB', image.size)
 	rgbImage.paste(image)
 	return rgbImage
 
+# image dataset class
 class ImageDataset(Dataset):
 	def __init__(self, root, _transforms=None, unaligned=False, mode='train'):
 		self.transform = transforms.Compose(_transforms)
@@ -45,6 +56,7 @@ class ImageDataset(Dataset):
 		itemA = self.transform(imageA)
 		itemB = self.transform(imageB)
 		return { 'A':itemA, 'B':itemB }
+
 	def __len__(self):
 		return max(len(self.filesA), len(self.filesB))
 
@@ -143,8 +155,8 @@ Channels = 3
 ImgHeight, ImgWidth = 256, 256
 ResidualBlocks = 9
 LearningRate = 0.0002
-b1, b2 = 0.5, 0.999
-Epochs = 250
+BetaTuple = (0.5, 0.999)
+Epochs = 300
 InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
@@ -166,15 +178,6 @@ GBA = GeneratorResNet(inputShape, ResidualBlocks)
 DA = Discriminator(inputShape)
 DB = Discriminator(inputShape)
 
-cuda = torch.cuda.is_available()
-mps = torch.backends.mps.is_available()
-if cuda:
-	device = torch.device('cuda')
-	torch.cuda.empty_cache()
-elif mps:
-	device = torch.device('mps')
-else:
-	device = torch.device('cpu')
 GAB = GAB.to(device)
 GBA = GBA.to(device)
 DA = DA.to(device)
@@ -190,10 +193,12 @@ DB.apply(initWeightsNormal)
 
 optimizerG = torch.optim.Adam(
 	itertools.chain(GAB.parameters(), GBA.parameters()), lr=LearningRate,
-	betas=(b1, b2)
+	betas=BetaTuple
 )
-optimizerDA = torch.optim.Adam(DA.parameters(), lr=LearningRate, betas=(b1, b2))
-optimizerDB = torch.optim.Adam(DB.parameters(), lr=LearningRate, betas=(b1, b2))
+optimizerDA = torch.optim.Adam(
+	DA.parameters(), lr=LearningRate, betas=BetaTuple)
+optimizerDB = torch.optim.Adam(
+	DB.parameters(), lr=LearningRate, betas=BetaTuple)
 
 class LambdaLR:
 	def __init__(self, epochs, offset, decayStartEpoch):
@@ -213,8 +218,7 @@ lrSchedulerDB = torch.optim.lr_scheduler.LambdaLR(
 	optimizerDB, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
 )
 
-#Tensor = torch.cuda.FloatTensor if cuda else torch.Tensor
-
+# ReplayBuffer class
 class ReplayBuffer:
 	def __init__(self, maxSize=50):
 		self.maxSize = maxSize
@@ -227,9 +231,9 @@ class ReplayBuffer:
 				self.data.append(element)
 				toReturn.append(element)
 			elif random.uniform(0, 1) > 0.5:
-					i = random.randrange(0, self.maxSize)
-					toReturn.append(self.data[i].clone())
-					self.data[i] = element
+				i = random.randrange(0, self.maxSize)
+				toReturn.append(self.data[i].clone())
+				self.data[i] = element
 			else:
 				toReturn.append(element)
 		return torch.cat(toReturn)
@@ -293,9 +297,11 @@ for epoch in range(InitEpoch, Epochs):
 		# random learning
 		if random.randrange(1000) < 300: continue
 
+		# get images from data set
 		realA = batch['A'].to(device)
 		realB = batch['B'].to(device)
 
+		# make valid and fake target
 		t = np.ones((realA.size(0), *DA.outputShape), dtype=np.float32)
 		valid = torch.from_numpy(t).to(device)
 		t = np.zeros((realA.size(0), *DA.outputShape), dtype=np.float32)
@@ -303,6 +309,7 @@ for epoch in range(InitEpoch, Epochs):
 
 		GAB.train()
 		GBA.train()
+
 		optimizerG.zero_grad()
 
 		lossIDA = criterionIdentity(GBA(realA), realA)
