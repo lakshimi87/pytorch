@@ -60,6 +60,7 @@ class ImageDataset(Dataset):
 	def __len__(self):
 		return max(len(self.filesA), len(self.filesB))
 
+# initialize weights by normal
 def initWeightsNormal(m):
 	classname = m.__class__.__name__
 	if classname.find('Conv') != -1:
@@ -70,6 +71,7 @@ def initWeightsNormal(m):
 		nn.init.normal_(m.weight.data, 1.0, 0.02)
 		nn.init.constant_(m.bias.data, 0.0)
 
+# ResidualBlock class
 class ResidualBlock(nn.Module):
 	def __init__(self, inFeatures):
 		super(ResidualBlock, self).__init__()
@@ -85,6 +87,7 @@ class ResidualBlock(nn.Module):
 	def forward(self, x):
 		return x + self.block(x.to(device))
 
+# GeneratorResNet class
 class GeneratorResNet(nn.Module):
 	def __init__(self, inputShape, numResidualBlocks):
 		super(GeneratorResNet, self).__init__()
@@ -125,6 +128,7 @@ class GeneratorResNet(nn.Module):
 	def forward(self, x):
 		return self.model(x.to(device))
 
+# Discriminator class
 class Discriminator(nn.Module):
 	def __init__(self, inputShape):
 		super(Discriminator, self).__init__()
@@ -208,6 +212,19 @@ class LambdaLR:
 	def step(self, epoch):
 		return 1.0 - max(0, epoch+self.offset-self.decayStartEpoch)/(self.epochs-self.decayStartEpoch)
 
+for d in os.listdir(f"saved_models/{DatasetName}/"):
+	if not d.startswith("GAB") or not d.endswith(".pth"): continue
+	epoch = int(d[3:-4])
+	if epoch > InitEpoch: InitEpoch = epoch
+
+if InitEpoch > 0:
+	print(f"Load epoch {InitEpoch}....")
+	GAB.load_state_dict(torch.load(f"saved_models/{DatasetName}/GAB{InitEpoch}.pth"))
+	GBA.load_state_dict(torch.load(f"saved_models/{DatasetName}/GBA{InitEpoch}.pth"))
+	DA.load_state_dict(torch.load(f"saved_models/{DatasetName}/DA{InitEpoch}.pth"))
+	DB.load_state_dict(torch.load(f"saved_models/{DatasetName}/DB{InitEpoch}.pth"))
+	InitEpoch += 1
+
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
 	optimizerG, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
 )
@@ -254,6 +271,7 @@ dataLoader = DataLoader(
 	batch_size=BatchSize,
 	shuffle=True,
 )
+
 valDataLoader = DataLoader(
 	ImageDataset(f'dataset/{DatasetName}', 
 		_transforms=_transforms, unaligned=True, mode='test'),
@@ -277,19 +295,6 @@ def sampleImages(batchesDone):
 
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 	save_image(imageGrid, f"images/{DatasetName}/{batchesDone}.png", normalize=False)
-
-for d in os.listdir(f"saved_models/{DatasetName}/"):
-	if not d.startswith("GAB") or not d.endswith(".pth"): continue
-	epoch = int(d[3:-4])
-	if epoch > InitEpoch: InitEpoch = epoch
-
-if InitEpoch > 0:
-	print(f"Load epoch {InitEpoch}....")
-	GAB.load_state_dict(torch.load(f"saved_models/{DatasetName}/GAB{InitEpoch}.pth"))
-	GBA.load_state_dict(torch.load(f"saved_models/{DatasetName}/GBA{InitEpoch}.pth"))
-	DA.load_state_dict(torch.load(f"saved_models/{DatasetName}/DA{InitEpoch}.pth"))
-	DB.load_state_dict(torch.load(f"saved_models/{DatasetName}/DB{InitEpoch}.pth"))
-	InitEpoch += 1
 
 prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
@@ -317,14 +322,14 @@ for epoch in range(InitEpoch, Epochs):
 		lossIdentity = (lossIDA + lossIDB)/2
 
 		fakeB = GAB(realA)
-		lossGANAB = criterionGAN(DB(fakeB), valid)
 		fakeA = GBA(realB)
+		lossGANAB = criterionGAN(DB(fakeB), valid)
 		lossGANBA = criterionGAN(DA(fakeA), valid)
 		lossGAN = (lossGANAB + lossGANBA)/2
 
 		recovA = GBA(fakeB)
-		lossCycleA = criterionCycle(recovA, realA)
 		recovB = GAB(fakeA)
+		lossCycleA = criterionCycle(recovA, realA)
 		lossCycleB = criterionCycle(recovB, realB)
 		lossCycle = (lossCycleA + lossCycleB)/2
 
@@ -352,6 +357,7 @@ for epoch in range(InitEpoch, Epochs):
 		lossDB = (lossReal + lossFake)/2
 		lossDB.backward()
 		optimizerDB.step()
+
 		lossD = (lossDA + lossDB)/2
 
 		batchesDone = epoch*len(dataLoader) + i
