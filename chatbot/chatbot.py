@@ -42,7 +42,7 @@ class WordVocab():
 			self.word2count[word] += 1
 
 class TextDataset(Dataset):
-	def __init__(self, csvPath, min_length=3, maxLength=32):
+	def __init__(self, csvPath, maxLength=32):
 		super().__init__()
 
 		self.tagger = Okt()   # 형태소 분석기
@@ -65,12 +65,11 @@ class TextDataset(Dataset):
 			src = self.clean_text(src)
 			tgt = self.clean_text(tgt)
 
-			if len(src) > min_length and len(tgt) > min_length:
-				# 최소 길이를 넘어가는 문장의 단어만 추가
-				wordvocab.add_sentence(src)
-				wordvocab.add_sentence(tgt)
-				src_clean.append(src)
-				tgt_clean.append(tgt)
+			# 최소 길이를 넘어가는 문장의 단어만 추가
+			wordvocab.add_sentence(src)
+			wordvocab.add_sentence(tgt)
+			src_clean.append(src)
+			tgt_clean.append(tgt)
 
 		self.srcs = src_clean
 		self.tgts = tgt_clean
@@ -105,7 +104,7 @@ class TextDataset(Dataset):
 	def __len__(self):
 		return len(self.srcs)
 
-dataset = TextDataset('data/ChatbotData.csv', 5, 25)
+dataset = TextDataset('data/ChatbotData.csv', 32)
 
 # train and test dataset split
 train_size = int(len(dataset) * 0.8)
