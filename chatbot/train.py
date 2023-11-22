@@ -42,7 +42,7 @@ class WordVocab():
 			self.word2count[word] += 1
 
 class TextDataset(Dataset):
-	def __init__(self, csvPath, min_length=3, maxLength=32):
+	def __init__(self, csvPath, minLength=3, maxLength=32):
 		super().__init__()
 
 		self.tagger = Hannanum()
@@ -63,7 +63,7 @@ class TextDataset(Dataset):
 			src = self.cleanText(src)
 			tgt = self.cleanText(tgt)
 
-			if len(src) > min_length and len(tgt) > min_length:
+			if len(src) > minLength and len(tgt) > minLength:
 				# 최소 길이를 넘어가는 문장의 단어만 추가
 				self.wordvocab.addSentence(src)
 				self.wordvocab.addSentence(tgt)
@@ -89,15 +89,14 @@ class TextDataset(Dataset):
 	def __len__(self):
 		return len(self.srcs)
 
-dataset = TextDataset('data/ChatbotData.csv')
+dataset = TextDataset('data/data.csv')
 
 # train and test dataset split
-train_size = int(len(dataset) * 0.8)
-test_size = len(dataset) - train_size
-train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
-
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=True)
+trainSize = int(len(dataset) * 0.8)
+testSize = len(dataset) - trainSize
+trainDataset, testDataset = random_split(dataset, [trainSize, testSize])
+trainLoader = DataLoader(trainDataset, batch_size=64, shuffle=True)
+testLoader = DataLoader(testDataset, batch_size=64, shuffle=True)
 
 class Encoder(nn.Module):
 	def __init__(self, numVocabs, hiddenSize, embeddingDim, numLayers=1, dropout=0.2):
@@ -231,8 +230,8 @@ class EarlyStopping:
 				self.counter += 1
 				if self.verbose:
 					print(f'[EarlyStopping] (Patience) {self.counter}/{self.patience}, ' \
-						  f'Best: {self.best_score:.5f}' \
-						  f', Current: {score:.5f}, Delta: {np.abs(self.best_score - score):.5f}')
+						  f'Best: {self.best_score:.5f}, ' \
+						  f'Current: {score:.5f}, Delta: {np.abs(self.best_score - score):.5f}')
 
 		elif self.mode == 'max':
 			if score > (self.best_score + self.delta):
@@ -244,8 +243,8 @@ class EarlyStopping:
 				self.counter += 1
 				if self.verbose:
 					print(f'[EarlyStopping] (Patience) {self.counter}/{self.patience}, ' \
-						  f'Best: {self.best_score:.5f}' \
-						  f', Current: {score:.5f}, Delta: {np.abs(self.best_score - score):.5f}')
+						  f'Best: {self.best_score:.5f}, ' \
+						  f'Current: {score:.5f}, Delta: {np.abs(self.best_score - score):.5f}')
 
 		if self.counter >= self.patience:
 			if self.verbose:
@@ -353,8 +352,8 @@ SavePath = 'models/seq2seq-chatbot-kor.pt'
 
 bestLoss = np.inf
 for epoch in range(NumEpochs):
-	loss = train(model, train_loader, optimizer, lossFunction, device)
-	evalLoss = evaluate(model, test_loader, lossFunction, device)
+	loss = train(model, trainLoader, optimizer, lossFunction, device)
+	evalLoss = evaluate(model, testLoader, lossFunction, device)
 	
 	if evalLoss < bestLoss:
 		bestLoss = evalLoss
@@ -369,9 +368,5 @@ for epoch in range(NumEpochs):
 	# Scheduler
 	scheduler.step(evalLoss)
 				   
-model.load_state_dict(torch.load(SavePath))
-torch.save(model.state_dict(), f'models/seq2seq-chatbot-kor-{bestLoss:.4f}.pt')
-
-model.load_state_dict(torch.load(SavePath))
-random_evaluation(model, test_dataset, dataset.wordvocab.index2word, device)
+random_evaluation(model, testDataset, dataset.wordvocab.index2word, device)
 
