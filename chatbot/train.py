@@ -29,10 +29,10 @@ class WordVocab():
 		self.index2word = { TokenPad: '<PAD>', TokenSOS: '<SOS>', TokenEOS: '<EOS>' }
 		self.numWords = 3  # PAD, SOS, EOS 포함
 
-	def add_sentence(self, sentence):
-		for word in sentence: self.add_word(word)
+	def addSentence(self, sentence):
+		for word in sentence: self.addWord(word)
 
-	def add_word(self, word):
+	def addWord(self, word):
 		if word not in self.word2index:
 			self.word2index[word] = self.numWords
 			self.word2count[word] = 1
@@ -50,38 +50,28 @@ class TextDataset(Dataset):
 
 		df = pd.read_csv(csvPath)
 
-		# src: 질의, tgt: 답변
-		src_clean = []
-		tgt_clean = []
+		self.srcs, self.targets = [], []
 
 		# 단어 사전 생성
-		wordvocab = WordVocab()
+		self.wordvocab = WordVocab()
 
 		for _, row in df.iterrows():
 			src = row['Q']
 			tgt = row['A']
 
 			# 한글 전처리
-			src = self.clean_text(src)
-			tgt = self.clean_text(tgt)
+			src = self.cleanText(src)
+			tgt = self.cleanText(tgt)
 
 			if len(src) > min_length and len(tgt) > min_length:
 				# 최소 길이를 넘어가는 문장의 단어만 추가
-				wordvocab.add_sentence(src)
-				wordvocab.add_sentence(tgt)
-				src_clean.append(src)
-				tgt_clean.append(tgt)
+				self.wordvocab.addSentence(src)
+				self.wordvocab.addSentence(tgt)
+				self.srcs.append(torch.tensor(self.convertToSequence(src)))
+				self.targets.append(torch.tensor(self.convertToSequence(tgt)))
 
-		self.srcs = src_clean
-		self.tgts = tgt_clean
-		self.wordvocab = wordvocab
-
-	def normalize(self, sentence):
+	def cleanText(self, sentence):
 		sentence = re.sub(r'[^A-Za-z0-9가-힣]+', r' ', sentence)
-		return sentence
-
-	def clean_text(self, sentence):
-		sentence = self.normalize(sentence)
 		sentence = self.tagger.morphs(sentence)
 		return sentence
 
@@ -94,13 +84,7 @@ class TextDataset(Dataset):
 		return seq
 
 	def __getitem__(self, idx):
-		inputs = self.srcs[idx]
-		inputs = self.convertToSequence(inputs)
-
-		outputs = self.tgts[idx]
-		outputs = self.convertToSequence(outputs)
-
-		return torch.tensor(inputs), torch.tensor(outputs)
+		return self.srcs[idx], self.targets[idx]
 
 	def __len__(self):
 		return len(self.srcs)

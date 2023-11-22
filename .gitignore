@@ -162,6 +162,7 @@ cython_debug/
 example/data
 selfie2anime/data
 selfie2anime/images
+selfie2anime/saved_models
 chatbot/models
 
 .DS_Store
