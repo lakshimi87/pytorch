@@ -10,7 +10,6 @@ from torch import optim
 from torch.utils.data.dataset import Dataset
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from konlpy.tag import *
 
 if torch.cuda.is_available():
 	device = torch.device('cuda')
@@ -42,11 +41,10 @@ class WordVocab():
 			self.word2count[word] += 1
 
 class TextDataset(Dataset):
-	def __init__(self, csvPath, maxLength=32):
+	def __init__(self, csvPath, min_length=3, maxLength=32):
 		super().__init__()
 
-		self.tagger = Hannanum()
-		self.maxLength = maxLength
+		self.maxLength = maxLength # 한 문장의 최대 길이 지정
 
 		df = pd.read_csv(csvPath)
 
@@ -65,11 +63,12 @@ class TextDataset(Dataset):
 			src = self.clean_text(src)
 			tgt = self.clean_text(tgt)
 
-			# 최소 길이를 넘어가는 문장의 단어만 추가
-			wordvocab.add_sentence(src)
-			wordvocab.add_sentence(tgt)
-			src_clean.append(src)
-			tgt_clean.append(tgt)
+			if len(src) > min_length and len(tgt) > min_length:
+				# 최소 길이를 넘어가는 문장의 단어만 추가
+				wordvocab.add_sentence(src)
+				wordvocab.add_sentence(tgt)
+				src_clean.append(src)
+				tgt_clean.append(tgt)
 
 		self.srcs = src_clean
 		self.tgts = tgt_clean
@@ -81,7 +80,7 @@ class TextDataset(Dataset):
 
 	def clean_text(self, sentence):
 		sentence = self.normalize(sentence)
-		sentence = self.tagger.morphs(sentence)
+		sentence = sentence.split()
 		return sentence
 
 	def convertToSequence(self, sentence):
@@ -104,7 +103,7 @@ class TextDataset(Dataset):
 	def __len__(self):
 		return len(self.srcs)
 
-dataset = TextDataset('data/ChatbotData.csv')
+dataset = TextDataset('data/ChatbotData.csv', 5, 25)
 
 # train and test dataset split
 train_size = int(len(dataset) * 0.8)
@@ -364,7 +363,7 @@ def random_evaluation(model, dataset, index2word, device, n=10):
 				print('==='*10)
 
 NumEpochs = 80
-SavePath = 'models/seq2seq-chatbot-kor.pt'
+SavePath = 'models/seq2seq-chatbot-simple.pt'
 
 bestLoss = np.inf
 for epoch in range(NumEpochs):
@@ -385,7 +384,7 @@ for epoch in range(NumEpochs):
 	scheduler.step(evalLoss)
 				   
 model.load_state_dict(torch.load(SavePath))
-torch.save(model.state_dict(), f'models/seq2seq-chatbot-kor-{bestLoss:.4f}.pt')
+torch.save(model.state_dict(), f'models/seq2seq-chatbot-simple-{bestLoss:.4f}.pt')
 
 model.load_state_dict(torch.load(SavePath))
 random_evaluation(model, test_dataset, dataset.wordvocab.index2word, device)
