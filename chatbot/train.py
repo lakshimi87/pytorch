@@ -10,7 +10,6 @@ from torch import optim
 from torch.utils.data.dataset import Dataset
 from torch.utils.data import random_split
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from konlpy.tag import *
 
 if torch.cuda.is_available():
 	device = torch.device('cuda')
@@ -45,7 +44,6 @@ class TextDataset(Dataset):
 	def __init__(self, csvPath, minLength=3, maxLength=32):
 		super().__init__()
 
-		self.tagger = Hannanum()
 		self.maxLength = maxLength
 
 		df = pd.read_csv(csvPath)
@@ -72,7 +70,7 @@ class TextDataset(Dataset):
 
 	def cleanText(self, sentence):
 		sentence = re.sub(r'[^A-Za-z0-9가-힣]+', r' ', sentence)
-		sentence = self.tagger.morphs(sentence)
+		sentence = sentence.split()
 		return sentence
 
 	def convertToSequence(self, sentence):
@@ -89,7 +87,7 @@ class TextDataset(Dataset):
 	def __len__(self):
 		return len(self.srcs)
 
-dataset = TextDataset('data/data.csv')
+dataset = TextDataset('data/lovetalk.csv')
 
 # train and test dataset split
 trainSize = int(len(dataset) * 0.8)

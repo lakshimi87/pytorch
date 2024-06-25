@@ -18,8 +18,8 @@ elif torch.backends.mps.is_available():
 else:
 	device = cpudevice
 
-SimulationCount = 13		 # 시뮬레이션을 수행할 횟수
-TimeLimit = 3				# 계산하기 위한 시간 제한
+SimulationCount = 13		# 시뮬레이션을 수행할 횟수
+TimeLimit = 5				# 계산하기 위한 시간 제한
 
 class ExValue(nn.Module):
 	def __init__(self):
@@ -330,7 +330,7 @@ def Place(board, p, turn):
 	return 0
 
 # 사용자 입력 기다리기
-def WaitForInput(board, turn):
+def waitForInput(board, turn):
 	while True:
 		DrawBoard(board)
 		DrawInfo(board)
@@ -344,7 +344,7 @@ def WaitForInput(board, turn):
 				if p != None and board[p] == 0: return p
 
 # random하게 두기
-def WaitForRandom(board, turn):
+def waitForRandom(board, turn):
 	hints = [ i for i in range(64) if board[i] == 0 ]
 	if len(hints) == 0: return -1
 	return random.choice(hints)
@@ -370,7 +370,7 @@ def getNextPlaceByMCTS(board, turn):
 	return place
 
 # 시작 버튼 기다리기
-def WaitForStart():
+def waitForStart():
 	# start game button 생성
 	startGameSurf = bigFont.render("Start Game", True, TextColor)
 	startGameRect = startGameSurf.get_rect()
@@ -390,7 +390,7 @@ def WaitForStart():
 		pygame.time.wait(WaitFrame)
 
 # 결과 출력
-def ShowResult(board, turn):
+def showResult(board, turn):
 	scores = GetScores(board)
 	result = (scores[turn==2]>scores[turn==1])*2+(scores[turn==1]>scores[turn==2])
 	msg = ( "Draw", "You lose!!", "You Win!!" )
@@ -471,6 +471,8 @@ for g in range(n):
 					pygame.quit()
 					quit()
 
+	showResult(board, turn)
+
 	w, b = GetScores(board)
 	if userTurn == 2 and w > b: win += 1
 	elif userTurn == 1 and w < b: win += 1
@@ -500,4 +502,3 @@ for g in range(n):
 		print(f"Saving {Path} is succeded")
 
 
-	
