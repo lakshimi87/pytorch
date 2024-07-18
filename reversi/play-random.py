@@ -1,14 +1,23 @@
-from game import *
+"""
+Title: play random
+Description: play reversi games with random computer choice
+Author: Aubrey Choi
+Date: 2024-07-10
+Version: 1.2
+License: MIT License
+"""
+
+from game import ReversiDisplay
 import random
 
-def waitComputer(board, hints):
-	idx = random.randomrange(len(hints))
+def waitRandom(board, turn):
+	hints = [ i for i in range(64) if board[i] == 0 ]
+	idx = random.randrange(len(hints))
 	return hints[idx]
 
-game = ReversiGame()
 display = ReversiDisplay()
 
 while True:
 	if not display.waitForStart(): break
-	game.newGame(waitComputer, waitComputer)
-	display.drawBoard(game.board)
+	if not display.run(waitRandom, waitRandom): break
+	if not display.showResult(): break

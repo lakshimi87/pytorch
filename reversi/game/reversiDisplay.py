@@ -13,6 +13,7 @@ import random   # 난수 발생용 라이브러리 모듈
 import pygame   # pygame을 위한 라이브러리 모듈
 import time	 # 시간을 측정하기 위한 모듈
 from pygame.locals import *
+from .reversiGame import *
 
 # 기본적인 컬러값
 White = (255, 255, 255)
@@ -23,10 +24,12 @@ TextOutlineColor = (0, 0, 0)
 HintColor = (100, 100, 255)
 
 class ReversiDisplay:
-	def __init__(self, fps=30, spaceSize=80, margin=20):
+	def __init__(self, fps=30, spaceSize=80, margin=20, flipSpeed=32):
+		self.game = ReversiGame()
 		self.fps = fps
 		self.spaceSize = spaceSize
 		self.margin = margin
+		self.flipSpeed = flipSpeed
 		self.waitTime = 1000 // fps
 		self.halfSpaceSize = spaceSize // 2
 		self.windowSize = (spaceSize * 8 + margin * 2, spaceSize * 8 + margin + 40)
@@ -85,10 +88,10 @@ class ReversiDisplay:
 	
 	# 정보를 표시하기
 	def drawInfo(self, board, turn):
-		scores = self.getScores(board)
+		scores = ReversiGame.getScores(board)
 		colors = ("", "White", "Black")
 		# 표시할 문자열 만들기
-		text = f"White : {scores[1]:2}  Black : {scores[2]:2}  Turn : {colors[turn]}"
+		text = f"White : {scores[0]:2}  Black : {scores[1]:2}  Turn : {colors[self.game.turn]}"
 		# 문자열을 이미지로 변환
 		scoreSurf = self.normalFont.render(text, True, TextColor)
 		scoreRect = scoreSurf.get_rect()
@@ -97,31 +100,22 @@ class ReversiDisplay:
 		self.displaySurf.blit(scoreSurf, scoreRect)
 
 	# 타일 뒤집기
-	def flipTiles(self, board, p, turn):
-		flips = self.getFlipTiles(board, p, turn)
+	def flipTiles(self, board, turn, flips):
+		self.drawBoard(board)
 		# 타일 뒤집기 애니메이션
-		for rgb in range(0, 255, 90):
+		for rgb in range(0, 255, self.flipSpeed):
 			color = tuple([rgb] * 3) if turn == 1 else tuple([255 - rgb] * 3)
 			for t in flips:
 				cx, cy = self.getCenter(t)
 				pygame.draw.circle(self.displaySurf, color, (cx, cy), self.halfSpaceSize - 3)
 			pygame.display.update()
 			pygame.time.wait(self.waitTime)
-		for t in flips:
-			board[t] = turn
 		self.drawInfo(board, turn)
 
 	# 클릭위치값이 주어졌을때, 클릭된 보드의 셀번호 반환
 	def getClickPosition(self, x, y):
 		rx, ry = (x - self.margin) // self.spaceSize, (y - self.margin) // self.spaceSize
 		return None if rx < 0 or rx >= 8 or ry < 0 or ry >= 8 else rx + ry * 8
-
-	# 새로운 보드 만들기
-	def newBoard(self):
-		board = [3] * 64
-		board[27], board[28], board[35], board[36] = 1, 2, 2, 1
-		board[20], board[29], board[34], board[43] = 0, 0, 0, 0
-		return board, 4
 
 	# 사용자 입력 기다리기
 	def waitForInput(self, board, turn):
@@ -176,22 +170,30 @@ class ReversiDisplay:
 						return True
 			pygame.time.wait(self.waitTime)
 
+	def waitFrames(self, frames):
+		for event in pygame.event.get():
+			if event.type == QUIT: return False
+			if event.type == KEYUP and event.key == K_ESCAPE: return False
+		pygame.time.wait(self.waitTime*frames)
+		return True
+
 	# 결과 출력
-	def showResult(self, board, turn):
-		scores = GetScores(board)
-		result = (scores[turn==2]>scores[turn==1])*2+(scores[turn==1]>scores[turn==2])
-		msg = ( "Draw", "You lose!!", "You Win!!" )
-		for _ in range(FPS*5):
-			drawBoard(board)
-			drawInfo(board)
-			drawOutlineText(msg[result], bigFont, 
-				(WinWidth//2, WinHeight//2), TextColor, TextOutlineColor)
+	def showResult(self):
+		scores = ReversiGame.getScores(self.game.board)
+		result = (scores[0] > scores[1]) + (scores[0] < scores[1])*2
+		msg = ( "Draw", "White Win!!", "Black Win!!" )
+		for _ in range(self.fps*5):
+			self.drawBoard(self.game.board)
+			self.drawInfo(self.game.board, 0)
+			self.drawOutlineText(msg[result], self.bigFont, 
+				(self.windowSize[0]//2, self.windowSize[1]//2), TextColor, TextOutlineColor)
 			pygame.display.update()  # display 업데이트
 			for event in pygame.event.get():
 				if event.type == QUIT: return False
 				if event.type == KEYUP and event.key == K_ESCAPE: return False
 				if event.type == MOUSEBUTTONUP: return True
-			pygame.time.wait(WaitFrame)
+			pygame.time.wait(self.waitTime)
+		return True
 
 	def drawOutlineText(self, text, font, pos, c, o):
 		d = ( (-2, 0), (0, -2), (2, 0), (0, 2) )
@@ -205,24 +207,15 @@ class ReversiDisplay:
 		tr.center = pos
 		self.displaySurf.blit(ts, tr)
 	
-	def run(self):
-		# 게임 메인 루프(game main loop)
-		n, win = 100, 0
-		for game in range(n):
-			# 보드 생성
-			board, hintCount = NewBoard()
-			turn = 1
-			userTurn = random.randrange(1, 3)
+	def run(self, waitWhitePlayer, waitBlackPlayer):
+		# 보드 생성
+		self.game.newGame(waitWhitePlayer, waitBlackPlayer)
+		self.draw(self.game.board, WhiteTurn)
 
 		# 게임 실행하는 메인 모듈
-		while turn != 0:
-			if turn == userTurn: p = WaitForRandom(board, turn)
-			else: p = WaitForComputer(board, turn)
-			if p == None: return
-			turn = Place(board, p, turn)
-			if not draw(board, turn): return
-		w, b = GetScores(board)
-		if userTurn == 2 and w > b: win += 1
-		elif userTurn == 1 and w < b: win += 1
-		print(f"Win rate = {win*100/(game+1):.1f}%")
+		for board, turn, flips in self.game.next():
+			if flips != None: self.flipTiles(board, turn^3, flips)
+			if not self.waitFrames(3): return False
+			self.draw(board, turn)
+		return True
 
