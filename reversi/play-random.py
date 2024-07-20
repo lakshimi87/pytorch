@@ -17,7 +17,7 @@ def waitRandom(board, turn):
 
 display = ReversiDisplay()
 
+if not display.waitForStart(): quit()
 while True:
-	if not display.waitForStart(): break
-	if not display.run(waitRandom, waitRandom): break
+	if not display.run(None, waitRandom): break
 	if not display.showResult(): break

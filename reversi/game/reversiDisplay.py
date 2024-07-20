@@ -118,11 +118,8 @@ class ReversiDisplay:
 		return None if rx < 0 or rx >= 8 or ry < 0 or ry >= 8 else rx + ry * 8
 
 	# 사용자 입력 기다리기
-	def waitForInput(self, board, turn):
+	def waitUser(self, board, turn):
 		while True:
-			self.drawBoard(board)
-			self.drawInfo(board, turn)
-			pygame.display.update()  # display 업데이트
 			# 이벤트 처리 (PyGame에서 마우스, 키보드 또는 윈도우의 버튼들)
 			for event in pygame.event.get():
 				if event.type == QUIT:
@@ -131,8 +128,7 @@ class ReversiDisplay:
 					return None
 				if event.type == MOUSEBUTTONUP:
 					p = self.getClickPosition(event.pos[0], event.pos[1])
-					if p is not None and board[p] == 0:
-						return p
+					if p is not None and board[p] == 0: return p
 
 	def draw(self, board, turn):
 		for _ in range(10):
@@ -209,7 +205,8 @@ class ReversiDisplay:
 	
 	def run(self, waitWhitePlayer, waitBlackPlayer):
 		# 보드 생성
-		self.game.newGame(waitWhitePlayer, waitBlackPlayer)
+		self.game.newGame(self.waitUser if waitWhitePlayer == None else waitWhitePlayer, 
+			self.waitUser if waitBlackPlayer == None else waitBlackPlayer)
 		self.draw(self.game.board, WhiteTurn)
 
 		# 게임 실행하는 메인 모듈

@@ -85,7 +85,7 @@ class ReversiGame:
 				yield (self.board, self.turn, None)
 				continue
 			p = self.wait[self.turn-1](self.board, self.turn)
-			if self.board[p] != 0: break
+			if p == None or self.board[p] != 0: break
 			flips = ReversiGame.getFlipTiles(self.board, p, self.turn)
 			ReversiGame.flipTiles(self.board, flips, self.turn)
 			self.board[p] = self.turn
