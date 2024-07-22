@@ -1,3 +1,12 @@
+"""
+Title: facial point detection
+Description: facial point detection
+Author: Aubrey Choi
+Date: 2024-07-10
+Version: 1.2
+License: MIT License
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -62,13 +62,10 @@ class ReversiGame:
 				bCount += 1
 		return wCount, bCount
 
-	def prerun(self, board, p, turn):
-		if p < 0:
-			return
+	def prerun(board, p, turn):
 		board[p] = turn
-		ft = self.getFlipTiles(board, p, turn)
-		for t in ft:
-			board[t] = turn
+		ft = ReversiGame.getFlipTiles(board, p, turn)
+		for t in ft: board[t] = turn
 
 	def flipTiles(board, flips, turn):
 		for t in flips:
