@@ -1,3 +1,12 @@
+"""
+Title: selfie to anime
+Description: selfie to anime with GAN
+Author: Aubrey Choi
+Date: 2024-07-10
+Version: 1.2
+License: MIT License
+"""
+
 import glob
 import random
 import os
