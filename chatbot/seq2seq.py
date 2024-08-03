@@ -1,3 +1,15 @@
+"""
+Title: train chatbot
+Description: train chatbot with seq2seq
+Author: Aubrey Choi
+Date: 2024-07-10
+Version: 1.2
+License: MIT License
+"""
+
+UseGRU=True
+Patience=1
+
 import os
 import numpy as np
 import pandas as pd
@@ -13,11 +25,10 @@ from torch.utils.data import DataLoader, SubsetRandomSampler
 
 if torch.cuda.is_available():
 	device = torch.device('cuda')
-#elif torch.backends.mps.is_available():
-#	device = torch.device('mps')
+elif not UseGRU and torch.backends.mps.is_available():
+	device = torch.device('mps')
 else:
 	device = torch.device('cpu')
-print(device)
 
 TokenPad, TokenSOS, TokenEOS = 0, 1, 2
 
@@ -87,14 +98,14 @@ class TextDataset(Dataset):
 	def __len__(self):
 		return len(self.srcs)
 
-dataset = TextDataset('data/lovetalk.csv')
+dataset = TextDataset('data/talk.csv')
 
 # train and test dataset split
 trainSize = int(len(dataset) * 0.8)
 testSize = len(dataset) - trainSize
 trainDataset, testDataset = random_split(dataset, [trainSize, testSize])
 trainLoader = DataLoader(trainDataset, batch_size=64, shuffle=True)
-testLoader = DataLoader(testDataset, batch_size=64, shuffle=True)
+testLoader = DataLoader(testDataset, batch_size=64, shuffle=True) 
 
 class Encoder(nn.Module):
 	def __init__(self, numVocabs, hiddenSize, embeddingDim, numLayers=1, dropout=0.2):
@@ -104,13 +115,20 @@ class Encoder(nn.Module):
 		self.embedding = nn.Embedding(numVocabs, embeddingDim)
 		self.dropout = nn.Dropout(dropout)
 		# RNN (embedding dimension)
-		self.rnn = nn.GRU(embeddingDim, hiddenSize, numLayers)
+		if UseGRU:
+			self.rnn = nn.GRU(embeddingDim, hiddenSize, numLayers)
+		else:
+			self.rnn = nn.LSTM(embeddingDim, hiddenSize, numLayers)
 		
 	def forward(self, x):
 		x = self.embedding(x).permute(1, 0, 2)
 		x = self.dropout(x)
-		_, hidden = self.rnn(x)
-		return hidden
+		if UseGRU:
+			_, hidden = self.rnn(x)
+			return hidden
+		else:
+			_, (hidden, cell) = self.rnn(x)
+			return hidden, cell
 
 class Decoder(nn.Module):
 	def __init__(self, numVocabs, hiddenSize, embeddingDim, numLayers=1, dropout=0.2):
@@ -119,17 +137,25 @@ class Decoder(nn.Module):
 		self.numVocabs = numVocabs
 		self.embedding = nn.Embedding(numVocabs, embeddingDim)
 		self.dropout = nn.Dropout(dropout)
-		self.rnn = nn.GRU(embeddingDim, hiddenSize, numLayers)
+		if UseGRU:
+			self.rnn = nn.GRU(embeddingDim, hiddenSize, numLayers)
+		else:
+			self.rnn = nn.LSTM(embeddingDim, hiddenSize, numLayers)
 		self.fc = nn.Linear(hiddenSize, numVocabs)
 
 	def forward(self, x, hiddenState):
 		x = x.unsqueeze(0) # (1, batchSize) 로 변환
 		x = self.embedding(x)
 		x = self.dropout(x)
-		output, hidden = self.rnn(x, hiddenState)
-		output = self.fc(output.squeeze(0))
 		# (sequence_length, batchSize, hiddenSize(32) x bidirectional(1))
-		return output, hidden
+		if UseGRU:
+			output, hidden = self.rnn(x, hiddenState)
+			output = self.fc(output.squeeze(0))
+			return output, hidden
+		else:
+			output, (hidden, cell) = self.rnn(x, hiddenState)
+			output = self.fc(output.squeeze(0))
+			return output, (hidden, cell)
 
 class Seq2Seq(nn.Module):
 	def __init__(self, numVocabs, hiddenSize, embeddingDim, numLayers = 1, dropout=0.5):
@@ -149,11 +175,13 @@ class Seq2Seq(nn.Module):
 		# 인코더에 입력 데이터 주입, encoder output은 버리고 hidden state 만 살립니다.
 		# 여기서 hidden state가 디코더에 주입할 context vector 입니다.
 		# (Bidirectional(1) x number of layers(1), batchSize, hiddenSize)
-		hidden = self.encoder(inputs)
+		if UseGRU:
+			hidden = self.encoder(inputs)
+		else:
+			hidden, cell = self.encoder(inputs)
 
 		# (batchSize) shape의 SOS TOKEN으로 채워진 디코더 입력 생성
 		input = torch.full((batchSize, ), TokenSOS, device=device)
-		#print("seq2seq input:", input.shape)
 
 		# 순회하면서 출력 단어를 생성합니다.
 		# 0번째는 TokenSOS 이 위치하므로, 1번째 인덱스부터 순회합니다.
@@ -161,14 +189,14 @@ class Seq2Seq(nn.Module):
 			# input : 디코더 입력 (batchSize)
 			# output: (batchSize, numVocabs)
 			# hidden: (Bidirectional(1) x number of layers(1), batchSize, hiddenSize)
-			#     context vector와 동일 shape
-			output, hidden = self.decoder(input, hidden)
-
+			# context vector와 동일 shape
+			if UseGRU:
+				output, hidden = self.decoder(input, hidden)
+			else:
+				output, (hidden, cell) = self.decoder(input, (hidden, cell))
 			PredictedOutputs[t] = output.reshape(batchSize, self.numVocabs)
-
 			input = output.argmax(1)
 
-		# return: (batchSize, sequence_length, numVocabs)로 변경
 		return PredictedOutputs.permute(1, 0, 2)
 
 NumVocabs = dataset.wordvocab.numWords
@@ -257,7 +285,7 @@ LR = 1e-2
 optimizer = optim.Adam(model.parameters(), lr=LR)
 lossFunction = nn.CrossEntropyLoss(ignore_index=TokenPad)
 
-es = EarlyStopping(patience=10, delta=0.001, mode='min', verbose=True)
+es = EarlyStopping(patience=Patience, delta=0.001, mode='min', verbose=True)
 
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
 												 mode='min', 
@@ -331,13 +359,10 @@ def random_evaluation(model, dataset, index2word, device, n=10):
 	model.eval()
 	with torch.no_grad():
 		for x, y in sampledLoader:
-			x, y = x.to(device), y.to(device)		
-			output = model(x)
 			# output: (number of samples, sequence_length, numVocabs)
-			
+			output = model(x.to(device))
+			x, y = x.numpy(), y.numpy()
 			preds = output.detach().cpu().numpy()
-			x = x.detach().cpu().numpy()
-			y = y.detach().cpu().numpy()
 			
 			for i in range(n):
 				print(f'질문   : {convertToSentence(x[i], index2word)}')
@@ -346,7 +371,7 @@ def random_evaluation(model, dataset, index2word, device, n=10):
 				print('==='*10)
 
 NumEpochs = 80
-SavePath = 'models/seq2seq-chatbot-kor.pt'
+SavePath = 'models/seq2seq-chatbot-kor.pth'
 
 bestLoss = np.inf
 for epoch in range(NumEpochs):
@@ -355,6 +380,7 @@ for epoch in range(NumEpochs):
 	
 	if evalLoss < bestLoss:
 		bestLoss = evalLoss
+		os.makedirs(os.path.dirname(SavePath), exist_ok=True)
 		torch.save(model.state_dict(), SavePath)
 	
 	print(f'epoch: {epoch+1}, loss: {loss:.4f}, evalLoss: {evalLoss:.4f}')
