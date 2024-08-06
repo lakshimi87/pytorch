@@ -60,7 +60,7 @@ class ImageDataset(Dataset):
 			imageB = Image.open(self.filesB[index%len(self.filesB)])
 
 		if imageA.mode != 'RGB': imageA = toRGB(imageA)
-		if imageB.mode != 'RGB': imageB = toRGB(imageA)
+		if imageB.mode != 'RGB': imageB = toRGB(imageB)
 
 		itemA = self.transform(imageA)
 		itemB = self.transform(imageB)

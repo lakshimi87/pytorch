@@ -4,6 +4,10 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 
+SOS_token = 0
+EOS_token = 1
+PAD_token = 2
+
 class Attention(nn.Module):
     def __init__(self, hidden_size):
         super(Attention, self).__init__()
