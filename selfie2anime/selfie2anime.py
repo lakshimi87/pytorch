@@ -175,7 +175,7 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-BatchSize = 2
+BatchSize = 4
 SampleInterval = 1000
 CheckPointInterval = 1
 
@@ -225,15 +225,15 @@ class LambdaLR:
 for d in os.listdir(f"saved_models/{DatasetName}/"):
 	if not d.startswith("GAB") or not d.endswith(".pth"): continue
 	epoch = int(d[3:-4])
-	if epoch > InitEpoch: InitEpoch = epoch
+	if epoch >= InitEpoch: InitEpoch = epoch+1
 
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
-	GAB.load_state_dict(torch.load(f"saved_models/{DatasetName}/GAB{InitEpoch}.pth"))
-	GBA.load_state_dict(torch.load(f"saved_models/{DatasetName}/GBA{InitEpoch}.pth"))
-	DA.load_state_dict(torch.load(f"saved_models/{DatasetName}/DA{InitEpoch}.pth"))
-	DB.load_state_dict(torch.load(f"saved_models/{DatasetName}/DB{InitEpoch}.pth"))
-	InitEpoch += 1
+	path = f"saved_models/{DatasetName}"
+	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", weights_only=True))
+	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", weights_only=True))
+	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", weights_only=True))
+	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", weights_only=True))
 
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
 	optimizerG, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
@@ -306,9 +306,9 @@ def sampleImages(batchesDone):
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 	save_image(imageGrid, f"images/{DatasetName}/{batchesDone:06}.png", normalize=False)
 
-prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
 	for i, batch in enumerate(dataLoader):
+		prevTime = time.time()
 		# get images from data set
 		realA = batch['A'].to(device)
 		realB = batch['B'].to(device)
@@ -367,10 +367,9 @@ for epoch in range(InitEpoch, Epochs):
 
 		lossD = (lossDA + lossDB)/2
 
-		batchesDone = epoch*len(dataLoader) + i
-		batchesLeft = Epochs * len(dataLoader) - batchesDone
-		timeLeft = datetime.timedelta(seconds=batchesLeft*(time.time()-prevTime))
-		prevTime = time.time()
+		batchesDone = epoch*len(dataLoader) + (i+1)*BatchSize
+		batchesLeft = Epochs*len(dataLoader) - batchesDone
+		timeLeft = datetime.timedelta(seconds=batchesLeft*(time.time()-prevTime)/BatchSize)
 
 		print(f"\r[Epoch {epoch}/{Epochs}]",
 			f"[Batch {i}/{len(dataLoader)}]",
@@ -388,8 +387,9 @@ for epoch in range(InitEpoch, Epochs):
 	lrSchedulerDB.step()
 
 	if CheckPointInterval != -1 and epoch%CheckPointInterval == 0:
-		torch.save(GAB.state_dict(), f"saved_models/{DatasetName}/GAB{epoch}.pth")
-		torch.save(GBA.state_dict(), f"saved_models/{DatasetName}/GBA{epoch}.pth")
-		torch.save(DA.state_dict(), f"saved_models/{DatasetName}/DA{epoch}.pth")
-		torch.save(DB.state_dict(), f"saved_models/{DatasetName}/DB{epoch}.pth")
+		path = f"saved_models/{DatasetName}"
+		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth", weights_only=True)
+		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth", weights_only=True)
+		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth", weights_only=True)
+		torch.save(DB.state_dict(), f"{path}/DB{epoch}.pth", weights_only=True)
 
