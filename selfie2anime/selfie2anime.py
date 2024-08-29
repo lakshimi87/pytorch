@@ -25,8 +25,6 @@ import time
 from torchvision.utils import save_image, make_grid
 from torchvision import datasets
 
-ImageCacheSize = 100
-
 # H/W acceleration
 if torch.cuda.is_available():
 	device = torch.device('cuda')
@@ -44,8 +42,8 @@ def toRGB(image):
 
 # image dataset class
 class ImageDataset(Dataset):
-	def __init__(self, root, _transforms=None, unaligned=False, mode='train'):
-		self.transform = transforms.Compose(_transforms)
+	def __init__(self, root, trans, unaligned=False, mode='train'):
+		self.transform = transforms.Compose(trans)
 		self.unaligned = unaligned
 		if mode=='train':
 			self.filesA = sorted(glob.glob(os.path.join(root, 'trainA')+'/*.*'))
@@ -53,18 +51,10 @@ class ImageDataset(Dataset):
 		else:
 			self.filesA = sorted(glob.glob(os.path.join(root, 'testA')+'/*.*'))
 			self.filesB = sorted(glob.glob(os.path.join(root, 'testB')+'/*.*'))
-		self.cache = [None]*ImageCacheSize
 
 	def __getitem__(self, index):
 		idx = index%len(self.filesA)
-		if idx < ImageCacheSize:
-			if self.cache[idx] == None:
-				imageA = Image.open(self.filesA[idx])
-				self.cache[idx] = imageA
-			else:
-				imageA = self.cache[idx]
-		else:
-			imageA = Image.open(self.filesA[idx])
+		imageA = Image.open(self.filesA[idx])
 		if self.unaligned:
 			imageB = Image.open(random.choice(self.filesB))
 		else:
@@ -278,7 +268,7 @@ class ReplayBuffer:
 fakeABuffer = ReplayBuffer()
 fakeBBuffer = ReplayBuffer()
 
-_transforms = [
+myTransforms = [
 	transforms.Resize(int(ImgHeight*1.12), Image.Resampling.BICUBIC),
 	transforms.RandomCrop((ImgHeight, ImgWidth)),
 	transforms.RandomHorizontalFlip(),
@@ -287,14 +277,14 @@ _transforms = [
 ]
 
 dataLoader = DataLoader(
-	ImageDataset(f"dataset/{DatasetName}", _transforms=_transforms, unaligned=True),
+	ImageDataset(f"dataset/{DatasetName}", myTransforms, unaligned=True),
 	batch_size=BatchSize,
 	shuffle=True,
 )
 
 valDataLoader = DataLoader(
 	ImageDataset(f'dataset/{DatasetName}', 
-		_transforms=_transforms, unaligned=True, mode='test'),
+		myTransforms, unaligned=True, mode='test'),
 	batch_size=7,
 	shuffle=True,
 )
