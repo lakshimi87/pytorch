@@ -25,6 +25,8 @@ import time
 from torchvision.utils import save_image, make_grid
 from torchvision import datasets
 
+ImageCacheSize = 100
+
 # H/W acceleration
 if torch.cuda.is_available():
 	device = torch.device('cuda')
@@ -51,9 +53,18 @@ class ImageDataset(Dataset):
 		else:
 			self.filesA = sorted(glob.glob(os.path.join(root, 'testA')+'/*.*'))
 			self.filesB = sorted(glob.glob(os.path.join(root, 'testB')+'/*.*'))
+		self.cache = [None]*ImageCacheSize
 
 	def __getitem__(self, index):
-		imageA = Image.open(self.filesA[index%len(self.filesA)])
+		idx = index%len(self.filesA)
+		if idx < ImageCacheSize:
+			if self.cache[idx] == None:
+				imageA = Image.open(self.filesA[idx])
+				self.cache[idx] = imageA
+			else:
+				imageA = self.cache[idx]
+		else:
+			imageA = Image.open(self.filesA[idx])
 		if self.unaligned:
 			imageB = Image.open(random.choice(self.filesB))
 		else:
@@ -174,8 +185,8 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-BatchSize = 1
-SampleInterval = 200
+BatchSize = 2
+SampleInterval = 1000
 CheckPointInterval = 1
 
 os.makedirs(f"images/{DatasetName}", exist_ok=True)
@@ -303,14 +314,11 @@ def sampleImages(batchesDone):
 	fakeB = make_grid(fakeB, nrow=7, normalize=True)
 
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
-	save_image(imageGrid, f"images/{DatasetName}/{batchesDone}.png", normalize=False)
+	save_image(imageGrid, f"images/{DatasetName}/{batchesDone:06}.png", normalize=False)
 
 prevTime = time.time()
 for epoch in range(InitEpoch, Epochs):
 	for i, batch in enumerate(dataLoader):
-		# random learning
-		if random.randrange(1000) < 300: continue
-
 		# get images from data set
 		realA = batch['A'].to(device)
 		realB = batch['B'].to(device)
