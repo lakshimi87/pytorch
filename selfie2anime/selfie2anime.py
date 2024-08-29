@@ -55,12 +55,11 @@ class ImageDataset(Dataset):
 	def __getitem__(self, index):
 		idx = index%len(self.filesA)
 		imageA = Image.open(self.filesA[idx])
+		if imageA.mode != 'RGB': imageA = toRGB(imageA)
 		if self.unaligned:
 			imageB = Image.open(random.choice(self.filesB))
 		else:
 			imageB = Image.open(self.filesB[index%len(self.filesB)])
-
-		if imageA.mode != 'RGB': imageA = toRGB(imageA)
 		if imageB.mode != 'RGB': imageB = toRGB(imageB)
 
 		itemA = self.transform(imageA)
@@ -68,7 +67,7 @@ class ImageDataset(Dataset):
 		return { 'A':itemA, 'B':itemB }
 
 	def __len__(self):
-		return max(len(self.filesA), len(self.filesB))
+		return len(self.filesA)
 
 # initialize weights by normal
 def initWeightsNormal(m):
@@ -175,7 +174,7 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-BatchSize = 4
+BatchSize = 2
 SampleInterval = 1000
 CheckPointInterval = 1
 
@@ -367,8 +366,8 @@ for epoch in range(InitEpoch, Epochs):
 
 		lossD = (lossDA + lossDB)/2
 
-		batchesDone = epoch*len(dataLoader) + (i+1)*BatchSize
-		batchesLeft = Epochs*len(dataLoader) - batchesDone
+		batchesDone = epoch*len(dataLoader)*BatchSize + (i+1)*BatchSize
+		batchesLeft = Epochs*len(dataLoader)*BatchSize - batchesDone
 		timeLeft = datetime.timedelta(seconds=batchesLeft*(time.time()-prevTime)/BatchSize)
 
 		print(f"\r[Epoch {epoch}/{Epochs}]",
