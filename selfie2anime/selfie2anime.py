@@ -387,8 +387,8 @@ for epoch in range(InitEpoch, Epochs):
 
 	if CheckPointInterval != -1 and epoch%CheckPointInterval == 0:
 		path = f"saved_models/{DatasetName}"
-		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth", weights_only=True)
-		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth", weights_only=True)
-		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth", weights_only=True)
-		torch.save(DB.state_dict(), f"{path}/DB{epoch}.pth", weights_only=True)
+		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth")
+		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth")
+		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth")
+		torch.save(DB.state_dict(), f"{path}/DB{epoch}.pth")
 
