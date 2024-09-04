@@ -234,10 +234,10 @@ for d in os.listdir(f"saved_models/{DatasetName}/"):
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
 	path = f"saved_models/{DatasetName}"
-	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", weights_only=True))
-	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", weights_only=True))
-	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", weights_only=True))
-	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", weights_only=True))
+	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", map_location=device, weights_only=True))
+	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", map_location=device, weights_only=True))
+	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", map_location=device, weights_only=True))
+	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", map_location=device, weights_only=True))
 
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
 	optimizerG, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
