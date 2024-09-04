@@ -51,11 +51,16 @@ class ImageDataset(Dataset):
 		else:
 			self.filesA = sorted(glob.glob(os.path.join(root, 'testA')+'/*.*'))
 			self.filesB = sorted(glob.glob(os.path.join(root, 'testB')+'/*.*'))
+		self.imagesA = []
+		for fileName in self.filesA:
+			imageA = Image.open(fileName)
+			if imageA.mode != 'RGB': imageA = toRGB(imageA)
+			self.imagesA.append(imageA.copy())
+			imageA.close()
 
 	def __getitem__(self, index):
 		idx = index%len(self.filesA)
-		imageA = Image.open(self.filesA[idx])
-		if imageA.mode != 'RGB': imageA = toRGB(imageA)
+		imageA = self.imagesA[idx]
 		if self.unaligned:
 			imageB = Image.open(random.choice(self.filesB))
 		else:
