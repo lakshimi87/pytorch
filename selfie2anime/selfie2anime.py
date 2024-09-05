@@ -310,9 +310,9 @@ def sampleImages(batchesDone):
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 	save_image(imageGrid, f"images/{DatasetName}/{batchesDone:06}.png", normalize=False)
 
+timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 for epoch in range(InitEpoch, Epochs):
 	for i, batch in enumerate(dataLoader):
-		prevTime = time.time()
 		# get images from data set
 		realA = batch['A'].to(device)
 		realB = batch['B'].to(device)
@@ -371,9 +371,10 @@ for epoch in range(InitEpoch, Epochs):
 
 		lossD = (lossDA + lossDB)/2
 
-		batchesDone = epoch*len(dataLoader)*BatchSize + (i+1)*BatchSize
-		batchesLeft = Epochs*len(dataLoader)*BatchSize - batchesDone
-		timeLeft = datetime.timedelta(seconds=batchesLeft*(time.time()-prevTime)/BatchSize)
+		batchesDone = epoch*epochSize + (i+1)*BatchSize
+		batchesLeft = Epochs*epochSize - batchesDone
+		deltaTime = (time.time()-timeStamp)/((epoch-InitEpoch)*epochSize+(i+1)*BatchSize)
+		timeLeft = datetime.timedelta(seconds=batchesLeft*deltaTime)
 
 		print(f"\r[Epoch {epoch}/{Epochs}]",
 			f"[Batch {i}/{len(dataLoader)}]",
