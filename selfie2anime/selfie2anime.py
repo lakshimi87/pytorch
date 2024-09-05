@@ -69,6 +69,7 @@ class ImageDataset(Dataset):
 
 		itemA = self.transform(imageA)
 		itemB = self.transform(imageB)
+		imageB.close()
 		return { 'A':itemA, 'B':itemB }
 
 	def __len__(self):
@@ -309,6 +310,8 @@ def sampleImages(batchesDone):
 
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 	save_image(imageGrid, f"images/{DatasetName}/{batchesDone:06}.png", normalize=False)
+	del(imgs)
+	del(imageGrid)
 
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 for epoch in range(InitEpoch, Epochs):
