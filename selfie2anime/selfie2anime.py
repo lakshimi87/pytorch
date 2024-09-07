@@ -54,7 +54,9 @@ class ImageDataset(Dataset):
 		self.imagesA = []
 		for fileName in self.filesA:
 			imageA = Image.open(fileName)
-			if imageA.mode != 'RGB': imageA = toRGB(imageA)
+			if imageA.mode != 'RGB':
+				print(fileName)
+				imageA = toRGB(imageA)
 			self.imagesA.append(imageA.copy())
 			imageA.close()
 
@@ -309,7 +311,7 @@ def sampleImages(batchesDone):
 	fakeB = make_grid(fakeB, nrow=7, normalize=True)
 
 	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
-	save_image(imageGrid, f"images/{DatasetName}/{batchesDone:06}.png", normalize=False)
+	save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
 	del(imgs)
 	del(imageGrid)
 
