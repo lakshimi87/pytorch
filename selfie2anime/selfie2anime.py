@@ -49,7 +49,6 @@ class ImageDataset(Dataset):
 		for fileName in self.filesA:
 			imageA = Image.open(fileName)
 			if imageA.mode != 'RGB':
-				print(fileName)
 				imageA = imageA.convert('RGB')
 			self.imagesA.append(imageA.copy())
 			imageA.close()
@@ -60,7 +59,6 @@ class ImageDataset(Dataset):
 		fileName = random.choice(self.filesB) if self.unaligned else self.filesB[index%len(self.filesB)]
 		imageB = Image.open(fileName)
 		if imageB.mode != 'RGB':
-			print(fileName)
 			imageB = imageB.convert('RGB')
 
 		itemA = self.transform(imageA)
@@ -381,7 +379,7 @@ for epoch in range(InitEpoch, Epochs):
 			f"adv: {lossG.item():.2f},",
 			f"cycle: {lossCycle.item():.2f},",
 			f"identity: {lossIdentity.item():.2f}",
-			f"ETA: {timeLeft}")
+			f"ETA: {timeLeft}", flush=True)
 
 		if batchesDone%SampleInterval == 0:
 			sampleImages(batchesDone)
