@@ -227,14 +227,14 @@ class LambdaLR:
 	def step(self, epoch):
 		return 1.0 - max(0, epoch+self.offset-self.decayStartEpoch)/(self.epochs-self.decayStartEpoch)
 
-for d in os.listdir(f"saved_models/{DatasetName}/"):
+for d in os.listdir("saved_models/"):
 	if not d.startswith("GAB") or not d.endswith(".pth"): continue
 	epoch = int(d[3:-4])
 	if epoch >= InitEpoch: InitEpoch = epoch+1
 
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
-	path = f"saved_models/{DatasetName}"
+	path = "saved_models"
 	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", map_location=device, weights_only=True))
 	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", map_location=device, weights_only=True))
 	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", map_location=device, weights_only=True))
@@ -395,7 +395,7 @@ for epoch in range(InitEpoch, Epochs):
 	lrSchedulerDB.step()
 
 	if CheckPointInterval != -1 and epoch%CheckPointInterval == 0:
-		path = f"saved_models/{DatasetName}"
+		path = "saved_models"
 		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth")
 		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth")
 		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth")
