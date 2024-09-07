@@ -163,7 +163,6 @@ class Discriminator(nn.Module):
 	def forward(self, img):
 		return self.model(img.to(device))
 
-DatasetName = 'selfie2anime'
 Channels = 3
 ImgHeight, ImgWidth = 256, 256
 ResidualBlocks = 9
@@ -276,13 +275,13 @@ myTransforms = [
 ]
 
 dataLoader = DataLoader(
-	ImageDataset(f"dataset/{DatasetName}", myTransforms, unaligned=True),
+	ImageDataset(f"dataset", myTransforms, unaligned=True),
 	batch_size=BatchSize,
 	shuffle=True,
 )
 
 valDataLoader = DataLoader(
-	ImageDataset(f'dataset/{DatasetName}', 
+	ImageDataset(f'dataset', 
 		myTransforms, unaligned=True, mode='test'),
 	batch_size=7,
 	shuffle=True,
