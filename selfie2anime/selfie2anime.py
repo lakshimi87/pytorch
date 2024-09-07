@@ -34,12 +34,6 @@ elif torch.backends.mps.is_available():
 else:
 	device = torch.device('cpu')
 
-# convert image to RGB
-def toRGB(image):
-	rgbImage = Image.new('RGB', image.size)
-	rgbImage.paste(image)
-	return rgbImage
-
 # image dataset class
 class ImageDataset(Dataset):
 	def __init__(self, root, trans, unaligned=False, mode='train'):
@@ -56,18 +50,18 @@ class ImageDataset(Dataset):
 			imageA = Image.open(fileName)
 			if imageA.mode != 'RGB':
 				print(fileName)
-				imageA = toRGB(imageA)
+				imageA = imageA.convert('RGB')
 			self.imagesA.append(imageA.copy())
 			imageA.close()
 
 	def __getitem__(self, index):
 		idx = index%len(self.filesA)
 		imageA = self.imagesA[idx]
-		if self.unaligned:
-			imageB = Image.open(random.choice(self.filesB))
-		else:
-			imageB = Image.open(self.filesB[index%len(self.filesB)])
-		if imageB.mode != 'RGB': imageB = toRGB(imageB)
+		fileName = random.choice(self.filesB) if self.unaligned else self.filesB[index%len(self.filesB)]
+		imageB = Image.open(fileName)
+		if imageB.mode != 'RGB':
+			print(fileName)
+			imageB = imageB.convert('RGB')
 
 		itemA = self.transform(imageA)
 		itemB = self.transform(imageB)
