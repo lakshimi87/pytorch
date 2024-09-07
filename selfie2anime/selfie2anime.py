@@ -184,8 +184,8 @@ BatchSize = 2
 SampleInterval = 1000
 CheckPointInterval = 1
 
-os.makedirs(f"images/{DatasetName}", exist_ok=True)
-os.makedirs(f"saved_models/{DatasetName}", exist_ok=True)
+os.makedirs(f"images", exist_ok=True)
+os.makedirs(f"saved_models", exist_ok=True)
 
 criterionGAN = nn.MSELoss()
 criterionCycle = nn.L1Loss()
