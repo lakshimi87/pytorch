@@ -1,6 +1,6 @@
 """
-Title: play simple ANN
-Description: play reversi games with simple ANN computer choice
+Title: play reversi game
+Description: play reversi games with specified network
 Author: Aubrey Choi
 Date: 2024-07-10
 Version: 1.2
@@ -17,20 +17,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from game import ReversiGame, WhiteTurn, BlackTurn
-from game import ReversiDisplay
+from game.reversiGame import ReversiGame, WhiteTurn, BlackTurn
+from game.reversiDisplay import ReversiDisplay
 import random
-
-Path = "./reversi-simple.pth"
+import pickle
 
 class SimpleANN(nn.Module):
-	def __init__(self):
-		super().__init__()
-		self.fc1 = nn.Linear(8*8, 1)
-	def forward(self, x):
-		x = self.fc1(x)
-		x = F.tanh(x)
-		return x
+    def __init__(self):
+        super().__init__()
+        self.fc1 = nn.Linear(8*8, 1)
+    def forward(self, x):
+        x = self.fc1(x)
+        x = F.tanh(x)
+        return x
 
 def convertToInput(board):
 	x = [ 1.0 if c == 1 else -1.0 if c == 2 else 0.0 for c in board ]
@@ -59,18 +58,20 @@ def waitAI(board, turn):
 			if out < minp: p, minp = hint, out
 		return p
 
-model = SimpleANN()
-# 모델의 파라미터를 읽어온다.
-if not os.path.exists(Path):
-	print(f"{Path} not found.")
-	quit()
-model.load_state_dict(torch.load(Path))
-print(f"Loading {Path} is succeeded")
-model.eval()
+if __name__ == '__main__':
+	path = "models/reversi-simple.pth"
+	#	load model with weights
+	if not os.path.exists(path):
+		print(f"Error: {path} file not found.")
+		quit()
+	model = SimpleANN()
+	model.load_state_dict(torch.load(path, weights_only=True))
+	print(f"Loading {path} is succeeded")
+	model.eval()
 
-display = ReversiDisplay()
+	display = ReversiDisplay()
 
-if not display.waitForStart(): quit()
-while True:
-	if not display.run(None, waitAI): break
-	if not display.showResult(): break
+	if not display.waitForStart(): quit()
+	while True:
+		if not display.run(None, waitAI): break
+		if not display.showResult(): break
