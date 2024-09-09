@@ -1,7 +1,7 @@
 import cv2
 import os
 
-PathFormat = "dataset/selfie2anime/%s/"
+PathFormat = "dataset/%s/"
 
 def isLike(image1, image2):
 	hist_img1 = cv2.calcHist([image1], [0, 1, 2], None, [256, 256, 256], [0, 256, 0, 256, 0, 256])
@@ -12,7 +12,7 @@ def isLike(image1, image2):
 	cv2.normalize(hist_img2, hist_img2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
 	# Find the metric value
 	metric_val = cv2.compareHist(hist_img1, hist_img2, cv2.HISTCMP_CORREL)
-	return round(metric_val, 2) > 0.95
+	return round(metric_val, 2) > 0.8
 
 setName = input("set name: ")
 path = PathFormat%setName
