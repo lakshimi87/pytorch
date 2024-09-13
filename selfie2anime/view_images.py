@@ -9,7 +9,7 @@ with open(f"{setName}.log", "r") as file:
     lines = file.readlines()
 
 for line in lines:
-	file1, file2, _ = line.split()
+	file1, file2, *_ = line.split()
 
 	# 이미지 읽기
 	image1 = Image.open(path+file1)
