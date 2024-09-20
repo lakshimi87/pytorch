@@ -39,35 +39,36 @@ class ImageDataset(Dataset):
 	def __init__(self, root, trans, unaligned=False, mode='train'):
 		self.transform = transforms.Compose(trans)
 		self.unaligned = unaligned
-		if mode=='train':
-			self.filesA = sorted(glob.glob(os.path.join(root, 'trainA')+'/*.*'))
-			self.filesB = sorted(glob.glob(os.path.join(root, 'trainB')+'/*.*'))
-		else:
-			self.filesA = sorted(glob.glob(os.path.join(root, 'testA')+'/*.*'))
-			self.filesB = sorted(glob.glob(os.path.join(root, 'testB')+'/*.*'))
+		filesA = sorted(glob.glob(os.path.join(root, f'{mode}A')+'/*.*'))
+		filesB = sorted(glob.glob(os.path.join(root, f'{mode}B')+'/*.*'))
+		self.lenA = len(filesA)
+		self.lenB = len(filesB)
 		self.imagesA = []
-		for fileName in self.filesA:
+		for fileName in filesA:
 			imageA = Image.open(fileName)
 			if imageA.mode != 'RGB':
 				imageA = imageA.convert('RGB')
 			self.imagesA.append(imageA.copy())
 			imageA.close()
+		self.imagesB = []
+		for fileName in filesB:
+			imageB = Image.open(fileName)
+			if imageB.mode != 'RGB':
+				imageB = imageB.convert('RGB')
+			self.imagesB.append(imageB.copy())
+			imageB.close()
 
 	def __getitem__(self, index):
-		idx = index%len(self.filesA)
+		idx = index%self.lenA
 		imageA = self.imagesA[idx]
-		fileName = random.choice(self.filesB) if self.unaligned else self.filesB[index%len(self.filesB)]
-		imageB = Image.open(fileName)
-		if imageB.mode != 'RGB':
-			imageB = imageB.convert('RGB')
-
+		idx = random.randrange(self.lenB) if self.unaligned else index%self.lenB
+		imageB = self.imagesB[idx]
 		itemA = self.transform(imageA)
 		itemB = self.transform(imageB)
-		imageB.close()
 		return { 'A':itemA, 'B':itemB }
 
 	def __len__(self):
-		return len(self.filesA)
+		return self.lenA
 
 # initialize weights by normal
 def initWeightsNormal(m):
