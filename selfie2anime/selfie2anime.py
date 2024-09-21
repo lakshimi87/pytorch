@@ -257,8 +257,8 @@ class ReplayBuffer:
 				toReturn.append(element)
 		return torch.cat(toReturn)
 
-fakeABuffer = ReplayBuffer()
-fakeBBuffer = ReplayBuffer()
+fakeABuffer = ReplayBuffer(BatchSize*8)
+fakeBBuffer = ReplayBuffer(BatchSize*8)
 
 myTransforms = [
 	transforms.Resize(int(ImgHeight*1.12), Image.Resampling.BICUBIC),
