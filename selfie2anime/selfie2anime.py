@@ -34,6 +34,15 @@ elif torch.backends.mps.is_available():
 else:
 	device = torch.device('cpu')
 
+def loadImages(files):
+	images = []
+	for fileName in files:
+		image = Image.open(fileName)
+		if image.mode != 'RGB': image = image.convert('RGB')
+		images.append(image.copy())
+		image.close()
+	return images
+
 # image dataset class
 class ImageDataset(Dataset):
 	def __init__(self, root, trans, unaligned=False, mode='train'):
@@ -43,20 +52,8 @@ class ImageDataset(Dataset):
 		filesB = sorted(glob.glob(os.path.join(root, f'{mode}B')+'/*.*'))
 		self.lenA = len(filesA)
 		self.lenB = len(filesB)
-		self.imagesA = []
-		for fileName in filesA:
-			imageA = Image.open(fileName)
-			if imageA.mode != 'RGB':
-				imageA = imageA.convert('RGB')
-			self.imagesA.append(imageA.copy())
-			imageA.close()
-		self.imagesB = []
-		for fileName in filesB:
-			imageB = Image.open(fileName)
-			if imageB.mode != 'RGB':
-				imageB = imageB.convert('RGB')
-			self.imagesB.append(imageB.copy())
-			imageB.close()
+		self.imagesA = loadImages(filesA)
+		self.imagesB = loadImages(filesB)
 
 	def __getitem__(self, index):
 		idx = index%self.lenA
@@ -186,15 +183,11 @@ criterionCycle = nn.L1Loss()
 criterionIdentity = nn.L1Loss()
 
 inputShape = (Channels, ImgHeight, ImgWidth)
-GAB = GeneratorResNet(inputShape, ResidualBlocks)
-GBA = GeneratorResNet(inputShape, ResidualBlocks)
-DA = Discriminator(inputShape)
-DB = Discriminator(inputShape)
+GAB = GeneratorResNet(inputShape, ResidualBlocks).to(device)
+GBA = GeneratorResNet(inputShape, ResidualBlocks).to(device)
+DA = Discriminator(inputShape).to(device)
+DB = Discriminator(inputShape).to(device)
 
-GAB = GAB.to(device)
-GBA = GBA.to(device)
-DA = DA.to(device)
-DB = DB.to(device)
 criterionGAN.to(device)
 criterionCycle.to(device)
 criterionIdentity.to(device)
@@ -349,8 +342,8 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerDA.zero_grad()
 
 		lossReal = criterionGAN(DA(realA), valid)
-		_fakeA = fakeABuffer.pushAndPop(fakeA)
-		lossFake = criterionGAN(DA(_fakeA.detach()), fake)
+		_fakeA = fakeABuffer.pushAndPop(fakeA.detach())
+		lossFake = criterionGAN(DA(_fakeA), fake)
 
 		lossDA = (lossReal + lossFake)/2
 		lossDA.backward()
@@ -359,8 +352,8 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerDB.zero_grad()
 
 		lossReal = criterionGAN(DB(realB), valid)
-		_fakeB = fakeBBuffer.pushAndPop(fakeB)
-		lossFake = criterionGAN(DB(_fakeB.detach()), fake)
+		_fakeB = fakeBBuffer.pushAndPop(fakeB.detach())
+		lossFake = criterionGAN(DB(_fakeB), fake)
 
 		lossDB = (lossReal + lossFake)/2
 		lossDB.backward()
