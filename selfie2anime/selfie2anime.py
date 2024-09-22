@@ -85,10 +85,11 @@ class ResidualBlock(nn.Module):
 			nn.ReflectionPad2d(1),
 			nn.Conv2d(inFeatures, inFeatures, 3),
 			nn.InstanceNorm2d(inFeatures),
-			nn.ReLU(inplace=True),
+			nn.LeakyReLU(0.2, inplace=True),
 			nn.ReflectionPad2d(1),
 			nn.Conv2d(inFeatures, inFeatures, 3),
 			nn.InstanceNorm2d(inFeatures),
+			nn.LeakyReLU(0.2, inplace=True),
 		)
 	def forward(self, x):
 		return x + self.block(x.to(device))
@@ -104,7 +105,7 @@ class GeneratorResNet(nn.Module):
 			nn.ReflectionPad2d(channels),
 			nn.Conv2d(channels, outFeatures, 7),
 			nn.InstanceNorm2d(outFeatures),
-			nn.ReLU(inplace=True),
+			nn.LeakyReLU(0.2, inplace=True),
 		]
 		for _ in range(2):
 			inFeatures, outFeatures = outFeatures, outFeatures*2
