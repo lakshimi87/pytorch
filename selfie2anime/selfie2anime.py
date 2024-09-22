@@ -18,7 +18,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 import numpy as np
-import math
 import itertools
 import datetime
 import time
@@ -178,19 +177,15 @@ CheckPointInterval = 1
 os.makedirs(f"images", exist_ok=True)
 os.makedirs(f"saved_models", exist_ok=True)
 
-criterionGAN = nn.MSELoss()
-criterionCycle = nn.L1Loss()
-criterionIdentity = nn.L1Loss()
+criterionGAN = nn.MSELoss().to(device)
+criterionCycle = nn.L1Loss().to(device)
+criterionIdentity = nn.L1Loss().to(device)
 
 inputShape = (Channels, ImgHeight, ImgWidth)
 GAB = GeneratorResNet(inputShape, ResidualBlocks).to(device)
 GBA = GeneratorResNet(inputShape, ResidualBlocks).to(device)
 DA = Discriminator(inputShape).to(device)
 DB = Discriminator(inputShape).to(device)
-
-criterionGAN.to(device)
-criterionCycle.to(device)
-criterionIdentity.to(device)
 
 GAB.apply(initWeightsNormal)
 GBA.apply(initWeightsNormal)
@@ -222,10 +217,14 @@ for d in os.listdir("saved_models/"):
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
 	path = "saved_models"
-	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", map_location=device, weights_only=True))
-	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", map_location=device, weights_only=True))
-	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", map_location=device, weights_only=True))
-	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", map_location=device, weights_only=True))
+	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
+	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
+	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
+	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
 
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
 	optimizerG, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
@@ -237,46 +236,27 @@ lrSchedulerDB = torch.optim.lr_scheduler.LambdaLR(
 	optimizerDB, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
 )
 
-# ReplayBuffer class
-class ReplayBuffer:
-	def __init__(self, maxSize=50):
-		self.maxSize = maxSize
-		self.data = []
-	def pushAndPop(self, data):
-		toReturn = []
-		for element in data.data:
-			element = torch.unsqueeze(element, 0)
-			if len(self.data) < self.maxSize:
-				self.data.append(element)
-				toReturn.append(element)
-			elif random.uniform(0, 1) > 0.5:
-				i = random.randrange(0, self.maxSize)
-				toReturn.append(self.data[i].clone())
-				self.data[i] = element
-			else:
-				toReturn.append(element)
-		return torch.cat(toReturn)
-
-fakeABuffer = ReplayBuffer(BatchSize*8)
-fakeBBuffer = ReplayBuffer(BatchSize*8)
-
-myTransforms = [
+trainTransform = [
 	transforms.Resize(int(ImgHeight*1.12), Image.Resampling.BICUBIC),
 	transforms.RandomCrop((ImgHeight, ImgWidth)),
 	transforms.RandomHorizontalFlip(),
 	transforms.ToTensor(),
 	transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 ]
+valTransform = [
+	transforms.RandomHorizontalFlip(),
+	transforms.ToTensor(),
+	transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+]
 
 dataLoader = DataLoader(
-	ImageDataset(f"dataset", myTransforms, unaligned=True),
+	ImageDataset(f"dataset", trainTransform, unaligned=True),
 	batch_size=BatchSize,
 	shuffle=True,
 )
 
 valDataLoader = DataLoader(
-	ImageDataset(f'dataset', 
-		myTransforms, unaligned=True, mode='test'),
+	ImageDataset(f'dataset', valTransform, mode='test'),
 	batch_size=7,
 	shuffle=True,
 )
@@ -342,8 +322,7 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerDA.zero_grad()
 
 		lossReal = criterionGAN(DA(realA), valid)
-		_fakeA = fakeABuffer.pushAndPop(fakeA.detach())
-		lossFake = criterionGAN(DA(_fakeA), fake)
+		lossFake = criterionGAN(DA(fakeA.detach()), fake)
 
 		lossDA = (lossReal + lossFake)/2
 		lossDA.backward()
@@ -352,8 +331,7 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerDB.zero_grad()
 
 		lossReal = criterionGAN(DB(realB), valid)
-		_fakeB = fakeBBuffer.pushAndPop(fakeB.detach())
-		lossFake = criterionGAN(DB(_fakeB), fake)
+		lossFake = criterionGAN(DB(fakeB.detach()), fake)
 
 		lossDB = (lossReal + lossFake)/2
 		lossDB.backward()
