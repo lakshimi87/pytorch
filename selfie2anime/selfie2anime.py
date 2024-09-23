@@ -33,32 +33,26 @@ elif torch.backends.mps.is_available():
 else:
 	device = torch.device('cpu')
 
-def loadImages(files):
-	images = []
-	for fileName in files:
-		image = Image.open(fileName)
-		if image.mode != 'RGB': image = image.convert('RGB')
-		images.append(image.copy())
-		image.close()
-	return images
+def loadImage(fileName):
+	image = Image.open(fileName)
+	if image.mode != 'RGB': image = image.convert('RGB')
+	return image
 
 # image dataset class
 class ImageDataset(Dataset):
 	def __init__(self, root, trans, unaligned=False, mode='train'):
 		self.transform = transforms.Compose(trans)
 		self.unaligned = unaligned
-		filesA = sorted(glob.glob(os.path.join(root, f'{mode}A')+'/*.*'))
-		filesB = sorted(glob.glob(os.path.join(root, f'{mode}B')+'/*.*'))
-		self.lenA = len(filesA)
-		self.lenB = len(filesB)
-		self.imagesA = loadImages(filesA)
-		self.imagesB = loadImages(filesB)
+		self.filesA = sorted(glob.glob(os.path.join(root, f'{mode}A')+'/*.*'))
+		self.filesB = sorted(glob.glob(os.path.join(root, f'{mode}B')+'/*.*'))
+		self.lenA = len(self.filesA)
+		self.lenB = len(self.filesB)
 
 	def __getitem__(self, index):
 		idx = index%self.lenA
-		imageA = self.imagesA[idx]
+		imageA = loadImage(self.filesA[idx])
 		idx = random.randrange(self.lenB) if self.unaligned else index%self.lenB
-		imageB = self.imagesB[idx]
+		imageB = loadImage(self.filesB[idx])
 		itemA = self.transform(imageA)
 		itemB = self.transform(imageB)
 		return { 'A':itemA, 'B':itemB }
@@ -89,10 +83,9 @@ class ResidualBlock(nn.Module):
 			nn.ReflectionPad2d(1),
 			nn.Conv2d(inFeatures, inFeatures, 3),
 			nn.InstanceNorm2d(inFeatures),
-			nn.LeakyReLU(0.2, inplace=True),
 		)
 	def forward(self, x):
-		return x + self.block(x.to(device))
+		return x + self.block(x)
 
 # GeneratorResNet class
 class GeneratorResNet(nn.Module):
@@ -171,7 +164,7 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-BatchSize = 2
+BatchSize = 4
 SampleInterval = 1000
 CheckPointInterval = 1
 
@@ -226,6 +219,12 @@ if InitEpoch > 0:
 		map_location=device, weights_only=True, ))
 	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", 
 		map_location=device, weights_only=True, ))
+	optimizerG.load_state_dict(torch.load(f"{path}/optimizerG{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
+	optimizerDA.load_state_dict(torch.load(f"{path}/optimizerDA{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
+	optimizerDB.load_state_dict(torch.load(f"{path}/optimizerDB{InitEpoch-1}.pth", 
+		map_location=device, weights_only=True, ))
 
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
 	optimizerG, lr_lambda=LambdaLR(Epochs, InitEpoch, DecayEpoch).step
@@ -238,7 +237,7 @@ lrSchedulerDB = torch.optim.lr_scheduler.LambdaLR(
 )
 
 trainTransform = [
-	transforms.Resize(int(ImgHeight*1.12), Image.Resampling.BICUBIC),
+	transforms.Resize(int(ImgHeight*1.12), transforms.InterpolationMode.BICUBIC),
 	transforms.RandomCrop((ImgHeight, ImgWidth)),
 	transforms.RandomHorizontalFlip(),
 	transforms.ToTensor(),
@@ -263,23 +262,24 @@ valDataLoader = DataLoader(
 )
 
 def sampleImages(batchesDone):
-	imgs = next(iter(valDataLoader))
-	GAB.eval()
-	GBA.eval()
-	realA = imgs['A'].to(device)
-	fakeB = GAB(realA)
-	realB = imgs['B'].to(device)
-	fakeA = GBA(realB)
+	with torch.no_grad():
+		imgs = next(iter(valDataLoader))
+		GAB.eval()
+		GBA.eval()
+		realA = imgs['A'].to(device)
+		fakeB = GAB(realA)
+		realB = imgs['B'].to(device)
+		fakeA = GBA(realB)
 
-	realA = make_grid(realA, nrow=7, normalize=True)
-	realB = make_grid(realB, nrow=7, normalize=True)
-	fakeA = make_grid(fakeA, nrow=7, normalize=True)
-	fakeB = make_grid(fakeB, nrow=7, normalize=True)
+		realA = make_grid(realA, nrow=7, normalize=True)
+		realB = make_grid(realB, nrow=7, normalize=True)
+		fakeA = make_grid(fakeA, nrow=7, normalize=True)
+		fakeB = make_grid(fakeB, nrow=7, normalize=True)
 
-	imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
-	save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
-	del(imgs)
-	del(imageGrid)
+		imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
+		save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
+		del(imgs)
+		del(imageGrid)
 
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 for epoch in range(InitEpoch, Epochs):
@@ -289,10 +289,8 @@ for epoch in range(InitEpoch, Epochs):
 		realB = batch['B'].to(device)
 
 		# make valid and fake target
-		t = np.ones((realA.size(0), *DA.outputShape), dtype=np.float32)
-		valid = torch.from_numpy(t).to(device)
-		t = np.zeros((realA.size(0), *DA.outputShape), dtype=np.float32)
-		fake = torch.from_numpy(t).to(device)
+		valid = torch.ones((realA.size(0), *DA.outputShape), device=device)
+		fake = torch.zeros((realA.size(0), *DA.outputShape), device=device)
 
 		GAB.train()
 		GBA.train()
@@ -315,7 +313,7 @@ for epoch in range(InitEpoch, Epochs):
 		lossCycleB = criterionCycle(recovB, realB)
 		lossCycle = (lossCycleA + lossCycleB)/2
 
-		lossG = lossGAN + LambdaCyc + lossCycle + LambdaID + lossIdentity
+		lossG = lossGAN + LambdaCyc * lossCycle + LambdaID + lossIdentity
 
 		lossG.backward()
 		optimizerG.step()
@@ -347,10 +345,10 @@ for epoch in range(InitEpoch, Epochs):
 
 		print(f"\r[Epoch {epoch}/{Epochs}]",
 			f"[Batch {i}/{len(dataLoader)}]",
-			f"D loss:{lossD.item():.2f},",
-			f"adv: {lossG.item():.2f},",
-			f"cycle: {lossCycle.item():.2f},",
-			f"identity: {lossIdentity.item():.2f}",
+			f"D:{lossD.item():.2f},",
+			f"GAN: {lossG.item():.2f},",
+			f"Cyc: {lossCycle.item():.2f},",
+			f"Id: {lossIdentity.item():.2f}",
 			f"ETA: {timeLeft}", flush=True)
 
 		if batchesDone%SampleInterval == 0:
@@ -362,8 +360,13 @@ for epoch in range(InitEpoch, Epochs):
 
 	if CheckPointInterval != -1 and epoch%CheckPointInterval == 0:
 		path = "saved_models"
+		# 모델 저장
 		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth")
 		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth")
 		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth")
 		torch.save(DB.state_dict(), f"{path}/DB{epoch}.pth")
 
+		# 옵티마이저 저장
+		torch.save(optimizerG.state_dict(), f"{path}/optimizerG{epoch}.pth")
+		torch.save(optimizerDA.state_dict(), f"{path}/optimizerDA{epoch}.pth")
+		torch.save(optimizerDB.state_dict(), f"{path}/optimizerDB{epoch}.pth")
