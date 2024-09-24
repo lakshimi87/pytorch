@@ -343,13 +343,12 @@ for epoch in range(InitEpoch, Epochs):
 		deltaTime = (time.time()-timeStamp)/((epoch-InitEpoch)*epochSize+(i+1)*BatchSize)
 		timeLeft = datetime.timedelta(seconds=batchesLeft*deltaTime)
 
-		print(f"\r[Epoch {epoch}/{Epochs}]",
-			f"[Batch {i}/{len(dataLoader)}]",
+		print(f"\r[{epoch}/{Epochs}][{i}/{len(dataLoader)}]",
 			f"D:{lossD.item():.2f},",
-			f"GAN: {lossG.item():.2f},",
-			f"Cyc: {lossCycle.item():.2f},",
-			f"Id: {lossIdentity.item():.2f}",
-			f"ETA: {timeLeft}", flush=True)
+			f"GAN:{lossG.item():.2f},",
+			f"Cyc:{lossCycle.item():.2f},",
+			f"Id:{lossIdentity.item():.2f}",
+			f"ETA:{str(timeLeft)[:-7]}", flush=True)
 
 		if batchesDone%SampleInterval == 0:
 			sampleImages(batchesDone)
