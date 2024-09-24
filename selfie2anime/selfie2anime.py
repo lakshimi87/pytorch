@@ -313,7 +313,7 @@ for epoch in range(InitEpoch, Epochs):
 		lossCycleB = criterionCycle(recovB, realB)
 		lossCycle = (lossCycleA + lossCycleB)/2
 
-		lossG = lossGAN + LambdaCyc * lossCycle + LambdaID + lossIdentity
+		lossG = lossGAN + LambdaCyc * lossCycle + LambdaID * lossIdentity
 
 		lossG.backward()
 		optimizerG.step()
