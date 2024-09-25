@@ -126,7 +126,7 @@ class GeneratorResNet(nn.Module):
 		self.model = nn.Sequential(*model)
 	
 	def forward(self, x):
-		return self.model(x.to(device))
+		return self.model(x)
 
 # Discriminator class
 class Discriminator(nn.Module):
@@ -152,7 +152,7 @@ class Discriminator(nn.Module):
 		return layers
 
 	def forward(self, img):
-		return self.model(img.to(device))
+		return self.model(img)
 
 Channels = 3
 ImgHeight, ImgWidth = 256, 256
