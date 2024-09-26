@@ -263,10 +263,10 @@ valDataLoader = DataLoader(
 )
 
 def sampleImages(batchesDone):
+	GAB.eval()
+	GBA.eval()
 	with torch.no_grad():
 		imgs = next(iter(valDataLoader))
-		GAB.eval()
-		GBA.eval()
 		realA = imgs['A'].to(device)
 		fakeB = GAB(realA)
 		realB = imgs['B'].to(device)
@@ -281,8 +281,8 @@ def sampleImages(batchesDone):
 		save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
 		del(imgs)
 		del(imageGrid)
-		GAB.train()
-		GBA.train()
+	GAB.train()
+	GBA.train()
 
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 for epoch in range(InitEpoch, Epochs):
