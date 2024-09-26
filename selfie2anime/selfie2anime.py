@@ -95,7 +95,7 @@ class GeneratorResNet(nn.Module):
 
 		outFeatures = 64
 		model = [
-			nn.ReflectionPad2d(channels),
+			nn.ReflectionPad2d(3),
 			nn.Conv2d(channels, outFeatures, 7),
 			nn.InstanceNorm2d(outFeatures),
 			nn.LeakyReLU(0.2, inplace=True),
@@ -145,6 +145,7 @@ class Discriminator(nn.Module):
 			nn.Conv2d(512, 1, 4, padding=1)
 		)
 
+	@staticmethod
 	def discriminatorBlock(inFilters, outFilters, normalize=True):
 		layers = [nn.Conv2d(inFilters, outFilters, 4, stride=2, padding=1)]
 		if normalize: layers += [nn.InstanceNorm2d(outFilters)]
@@ -280,6 +281,8 @@ def sampleImages(batchesDone):
 		save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
 		del(imgs)
 		del(imageGrid)
+		GAB.train()
+		GBA.train()
 
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 for epoch in range(InitEpoch, Epochs):
@@ -291,9 +294,6 @@ for epoch in range(InitEpoch, Epochs):
 		# make valid and fake target
 		valid = torch.ones((realA.size(0), *DA.outputShape), device=device)
 		fake = torch.zeros((realA.size(0), *DA.outputShape), device=device)
-
-		GAB.train()
-		GBA.train()
 
 		optimizerG.zero_grad()
 
