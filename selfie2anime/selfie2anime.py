@@ -198,11 +198,11 @@ optimizerDB = torch.optim.Adam(
 
 class LambdaLR:
 	def __init__(self, epochs, offset, decayStartEpoch):
-		self.epochs = epochs
+		self.denum = epochs - decayStartEpoch
 		self.offset = offset
 		self.decayStartEpoch = decayStartEpoch
 	def step(self, epoch):
-		return 1.0 - max(0, epoch+self.offset-self.decayStartEpoch)/(self.epochs-self.decayStartEpoch)
+		return 1.0 - max(0, epoch+self.offset-self.decayStartEpoch)/self.denum
 
 for d in os.listdir("saved_models/"):
 	if not d.startswith("GAB") or not d.endswith(".pth"): continue
@@ -279,8 +279,6 @@ def sampleImages(batchesDone):
 
 		imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 		save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
-		del(imgs)
-		del(imageGrid)
 	GAB.train()
 	GBA.train()
 
@@ -319,19 +317,15 @@ for epoch in range(InitEpoch, Epochs):
 		optimizerG.step()
 
 		optimizerDA.zero_grad()
-
 		lossReal = criterionGAN(DA(realA), valid)
 		lossFake = criterionGAN(DA(fakeA.detach()), fake)
-
 		lossDA = (lossReal + lossFake)/2
 		lossDA.backward()
 		optimizerDA.step()
 
 		optimizerDB.zero_grad()
-
 		lossReal = criterionGAN(DB(realB), valid)
 		lossFake = criterionGAN(DB(fakeB.detach()), fake)
-
 		lossDB = (lossReal + lossFake)/2
 		lossDB.backward()
 		optimizerDB.step()
@@ -359,13 +353,10 @@ for epoch in range(InitEpoch, Epochs):
 
 	if CheckPointInterval != -1 and epoch%CheckPointInterval == 0:
 		path = "saved_models"
-		# 모델 저장
 		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth")
 		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth")
 		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth")
 		torch.save(DB.state_dict(), f"{path}/DB{epoch}.pth")
-
-		# 옵티마이저 저장
 		torch.save(optimizerG.state_dict(), f"{path}/optimizerG{epoch}.pth")
 		torch.save(optimizerDA.state_dict(), f"{path}/optimizerDA{epoch}.pth")
 		torch.save(optimizerDB.state_dict(), f"{path}/optimizerDB{epoch}.pth")
