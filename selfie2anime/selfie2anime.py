@@ -165,8 +165,8 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-BatchSize = 4
-SampleInterval = 1000
+BatchSize = 2
+SampleInterval = 2000
 CheckPointInterval = 1
 
 os.makedirs(f"images", exist_ok=True)
