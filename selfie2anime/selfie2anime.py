@@ -212,19 +212,19 @@ for d in os.listdir("saved_models/"):
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
 	path = "saved_models"
-	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1}.pth", 
+	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
-	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1}.pth", 
+	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
-	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1}.pth", 
+	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
-	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1}.pth", 
+	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
-	optimizerG.load_state_dict(torch.load(f"{path}/optimizerG{InitEpoch-1}.pth", 
+	optimizerG.load_state_dict(torch.load(f"{path}/optimizerG{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
-	optimizerDA.load_state_dict(torch.load(f"{path}/optimizerDA{InitEpoch-1}.pth", 
+	optimizerDA.load_state_dict(torch.load(f"{path}/optimizerDA{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
-	optimizerDB.load_state_dict(torch.load(f"{path}/optimizerDB{InitEpoch-1}.pth", 
+	optimizerDB.load_state_dict(torch.load(f"{path}/optimizerDB{InitEpoch-1:03}.pth", 
 		map_location=device, weights_only=True, ))
 
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
@@ -278,7 +278,7 @@ def sampleImages(batchesDone):
 		fakeB = make_grid(fakeB, nrow=7, normalize=True)
 
 		imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
-		save_image(imageGrid, f"images/{batchesDone:06}.png", normalize=False)
+		save_image(imageGrid, f"images/{batchesDone:08}.png", normalize=False)
 	GAB.train()
 	GBA.train()
 
@@ -353,10 +353,10 @@ for epoch in range(InitEpoch, Epochs):
 
 	if (epoch+1)%CheckPointInterval == 0:
 		path = "saved_models"
-		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth")
-		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth")
-		torch.save(DA.state_dict(), f"{path}/DA{epoch}.pth")
-		torch.save(DB.state_dict(), f"{path}/DB{epoch}.pth")
-		torch.save(optimizerG.state_dict(), f"{path}/optimizerG{epoch}.pth")
-		torch.save(optimizerDA.state_dict(), f"{path}/optimizerDA{epoch}.pth")
-		torch.save(optimizerDB.state_dict(), f"{path}/optimizerDB{epoch}.pth")
+		torch.save(GAB.state_dict(), f"{path}/GAB{epoch:03}.pth")
+		torch.save(GBA.state_dict(), f"{path}/GBA{epoch:03}.pth")
+		torch.save(DA.state_dict(), f"{path}/DA{epoch:03}.pth")
+		torch.save(DB.state_dict(), f"{path}/DB{epoch:03}.pth")
+		torch.save(optimizerG.state_dict(), f"{path}/optimizerG{epoch:03}.pth")
+		torch.save(optimizerDA.state_dict(), f"{path}/optimizerDA{epoch:03}.pth")
+		torch.save(optimizerDB.state_dict(), f"{path}/optimizerDB{epoch:03}.pth")
