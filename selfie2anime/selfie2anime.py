@@ -167,7 +167,7 @@ LambdaCyc = 10.0
 LambdaID = 5.0
 BatchSize = 2
 SampleInterval = 2000
-CheckPointInterval = 1
+CheckPointInterval = 5
 
 os.makedirs(f"images", exist_ok=True)
 os.makedirs(f"saved_models", exist_ok=True)
@@ -351,7 +351,7 @@ for epoch in range(InitEpoch, Epochs):
 	lrSchedulerDA.step()
 	lrSchedulerDB.step()
 
-	if CheckPointInterval != -1 and epoch%CheckPointInterval == 0:
+	if (epoch+1)%CheckPointInterval == 0:
 		path = "saved_models"
 		torch.save(GAB.state_dict(), f"{path}/GAB{epoch}.pth")
 		torch.save(GBA.state_dict(), f"{path}/GBA{epoch}.pth")
