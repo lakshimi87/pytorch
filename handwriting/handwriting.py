@@ -46,8 +46,7 @@ class CNN(nn.Module):
 		super(CNN, self).__init__()
 		self.conv1 = nn.Conv2d(1, 8, 3, 1)
 		self.conv2 = nn.Conv2d(8, 16, 3, 1)
-		self.dropout1 = nn.Dropout(0.25)
-		self.dropout2 = nn.Dropout(0.5)
+		self.dropout = nn.Dropout(0.5)
 		self.fc1 = nn.Linear(2304, 256)
 		self.fc2 = nn.Linear(256, 10)
 	def forward(self, x):
@@ -56,11 +55,10 @@ class CNN(nn.Module):
 		x = self.conv2(x)
 		x = F.relu(x)
 		x = F.max_pool2d(x, 2)
-		x = self.dropout1(x)
 		x = torch.flatten(x, 1)
 		x = self.fc1(x)
 		x = F.relu(x)
-		x = self.dropout2(x)
+		x = self.dropout(x)
 		x = self.fc2(x)
 		output = F.log_softmax(x, dim = 1)
 		return output
@@ -100,11 +98,5 @@ for data, target in testLoader:
 	prediction = output.data.max(1)[1]
 	correct += prediction.eq(target.data).sum()
 
-print(f'Accuracy: {100*correct/len(testLoader.dataset):.2f}%')
+print(f'Accuracy: {100*correct.item()/len(testLoader.dataset):.2f}%')
 
-data, target = testData[0]
-data.reshape(1, -1)
-data = data.to(device)
-output = model.getFeatures(data).to(torch.device('cpu')).detach().numpy()
-plt.imshow(output[0])
-plt.show()
