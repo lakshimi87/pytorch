@@ -27,9 +27,20 @@ TestImagePath = "images/test_images"
 SaveImagePath = "saves"
 OutputDataPath = "training.csv"
 
-isCuda = torch.cuda.is_available()
-isMps = torch.backends.mps.is_available()
-device = torch.device('cuda' if isCuda else 'mps' if isMps else 'cpu')
+os.makedirs(SaveImagePath, exist_ok=True)
+
+if torch.cuda.is_available():
+    device='cuda'
+    useBf16=True
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+elif torch.backends.mps.is_available():
+    device='mps'
+    useBf16=False
+    torch.mps.empty_cache()
+else:
+    device='cpu'
+    useBf16=False
 print(f'Current device is {device}')
 
 class ImageDataset(Dataset):
@@ -63,7 +74,17 @@ def getFileList(root):
 	return glob.glob(root+"/*.jpg")
 			
 df = pd.read_csv(OutputDataPath)
+df = df[[
+	'left_eye_center_x','left_eye_center_y',
+	'right_eye_center_x','right_eye_center_y',
+	'nose_tip_x','nose_tip_y',
+	'mouth_left_corner_x','mouth_left_corner_y',
+	'mouth_right_corner_x','mouth_right_corner_y',
+	'mouth_center_top_lip_x','mouth_center_top_lip_y',
+	'mouth_center_bottom_lip_x','mouth_center_bottom_lip_y',
+]]
 df['image']=np.array([f"{TrainImagePath}/{idx}.jpg" for idx in range(len(df))])
+df = df.dropna()
 print(f"total data count : {len(df)}")
 xTrain, xTest = train_test_split(df, test_size=0.2)
 xTrain.reset_index(drop=True, inplace=True)
@@ -90,61 +111,66 @@ OutputSize = len(y)
 
 print(f'number of training data: {len(trainData)}')
 print(f'number of test data: {len(testData)}')
-print(f'number of test data: {len(testData)}')
 print(f"image size : {ImageWidth}x{ImageHeight}")
 print(f'Output size : {OutputSize}')
 
-trainLoader = DataLoader(dataset = trainData,
-	batch_size = BatchSize, shuffle = True)
-testLoader = DataLoader(dataset = testData,
-	batch_size = BatchSize, shuffle = True)
+trainLoader = DataLoader(
+	dataset = trainData,
+	batch_size = BatchSize,
+	shuffle = True,
+)
+testLoader = DataLoader(
+	dataset = testData,
+	batch_size = BatchSize, 
+	shuffle = True
+)
 
-class CNN(nn.Module):
-	def __init__(self):
-		super(CNN, self).__init__()
-		w, h = ImageWidth, ImageHeight
-		self.conv111 = nn.Conv2d(1, 8, 5, 1, 2)
-		self.conv112 = nn.Conv2d(8, 16, 3, 1, 1)
-		self.conv12 = nn.Conv2d(1, 16, 1, 1, 0)
-		w, h = w//2, h//2
-		self.conv2 = nn.Conv2d(16, 32, 3, 1, 1)
-		w, h = w//2, h//2
-		self.dropout1 = nn.Dropout2d(0.1)
-		self.dropout2 = nn.Dropout(0.2)
-		self.fc1 = nn.Linear(w*h*32, 2048)
-		self.fc2 = nn.Linear(2048, OutputSize)
-		self.norm8 = nn.BatchNorm2d(8)
-		self.norm16 = nn.BatchNorm2d(16)
-		self.norm32 = nn.BatchNorm2d(32)
+# ResidualBlock class
+class ResidualBlock(nn.Module):
+	def __init__(self, inFeatures):
+		super().__init__()
+		self.block = nn.Sequential(
+			nn.ReflectionPad2d(1),
+			nn.Conv2d(inFeatures, inFeatures, 3),
+			nn.InstanceNorm2d(inFeatures),
+			nn.LeakyReLU(0.2, inplace=True),
+			nn.ReflectionPad2d(1),
+			nn.Conv2d(inFeatures, inFeatures, 3),
+			nn.InstanceNorm2d(inFeatures),
+		)
 	def forward(self, x):
-		a = self.conv111(x)
-		a = self.norm8(a)
-		a = F.relu(a)
-		a = self.conv112(a)
-		a = self.norm16(a)
-		b = self.conv12(x)
-		b = self.norm16(b)
-		x = a*0.9+b*0.1
-		x = F.relu(x)
-		x = self.dropout1(x)
-		x = F.max_pool2d(x, 2)
-		x = self.conv2(x)
-		x = self.norm32(x)
-		x = F.relu(x)
-		x = F.max_pool2d(x, 2)
-		x = self.dropout1(x)
-		x = torch.flatten(x, 1)
-		x = self.fc1(x)
-		x = F.relu(x)
-		x = self.dropout2(x)
-		x = self.fc2(x)
-		return x
+		return x + self.block(x)
 
-model = CNN().to(device)
-optimizer = optim.Adam(model.parameters(), lr = LearningRate)
+class ResNetKeypointModel(nn.Module):
+	def __init__(self, outputSize):
+		super().__init__()
+		model = [
+			*self.convBlock(1, 8, False),
+			*self.convBlock(8, 16),
+			*self.convBlock(16, 64),
+		]
+		for _ in range(2):
+			model += [ResidualBlock(64)]
+		model += [nn.Flatten()]
+		model += [nn.Linear(ImageWidth*ImageHeight*64, outputSize)]
+		self.model = nn.Sequential(*model)
+
+	@staticmethod
+	def convBlock(inFeatures, outFeatures, normalize=True):
+		layers = [nn.Conv2d(inFeatures, outFeatures, 3, 1, 1)]
+		if normalize: layers += [nn.InstanceNorm2d(outFeatures)]
+		layers += [nn.LeakyReLU(0.2, inplace=True)]
+		return layers
+
+	def forward(self, x):
+		return self.model(x)
+
+# 모델 인스턴스화 및 손실 함수 설정
+model = ResNetKeypointModel(OutputSize).to(device)
+optimizer = optim.Adam(model.parameters(), lr=LearningRate)
 #criterion = nn.HuberLoss()
-#criterion = nn.MSELoss()
-criterion = nn.SmoothL1Loss()
+criterion = nn.MSELoss()
+#criterion = nn.SmoothL1Loss()
 print(model)
 
 for epoch in range(EpochNum):
