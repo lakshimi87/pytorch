@@ -157,7 +157,7 @@ class Discriminator(nn.Module):
 
 Channels = 3
 ImgHeight, ImgWidth = 256, 256
-ResidualBlocks = 9
+ResidualBlocks = 11
 LearningRate = 0.0002
 BetaTuple = (0.5, 0.999)
 Epochs = 300
@@ -165,7 +165,7 @@ InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
-BatchSize = 2
+BatchSize = 4
 SampleInterval = 2000
 CheckPointInterval = 5
 
