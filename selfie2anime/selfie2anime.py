@@ -207,6 +207,7 @@ class LambdaLR:
 for d in os.listdir("saved_models/"):
 	if not d.startswith("GAB") or not d.endswith(".pth"): continue
 	epoch = int(d[3:-4])
+	if epoch > InitEpoch: InitEpoch = epoch
 
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
