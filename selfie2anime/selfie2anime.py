@@ -160,13 +160,13 @@ ImgHeight, ImgWidth = 256, 256
 ResidualBlocks = 11
 LearningRate = 0.0002
 BetaTuple = (0.5, 0.999)
-Epochs = 300
+Epochs = 500
 InitEpoch = 0
 DecayEpoch = 100
 LambdaCyc = 10.0
 LambdaID = 5.0
 BatchSize = 4
-SampleInterval = 2000
+SampleInterval = 10000
 CheckPointInterval = 5
 
 os.makedirs(f"images", exist_ok=True)
@@ -207,24 +207,23 @@ class LambdaLR:
 for d in os.listdir("saved_models/"):
 	if not d.startswith("GAB") or not d.endswith(".pth"): continue
 	epoch = int(d[3:-4])
-	if epoch >= InitEpoch: InitEpoch = epoch+1
 
 if InitEpoch > 0:
 	print(f"Load epoch {InitEpoch}....")
 	path = "saved_models"
-	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch-1:03}.pth", 
+	GAB.load_state_dict(torch.load(f"{path}/GAB{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
-	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch-1:03}.pth", 
+	GBA.load_state_dict(torch.load(f"{path}/GBA{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
-	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch-1:03}.pth", 
+	DA.load_state_dict(torch.load(f"{path}/DA{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
-	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch-1:03}.pth", 
+	DB.load_state_dict(torch.load(f"{path}/DB{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
-	optimizerG.load_state_dict(torch.load(f"{path}/optimizerG{InitEpoch-1:03}.pth", 
+	optimizerG.load_state_dict(torch.load(f"{path}/optimizerG{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
-	optimizerDA.load_state_dict(torch.load(f"{path}/optimizerDA{InitEpoch-1:03}.pth", 
+	optimizerDA.load_state_dict(torch.load(f"{path}/optimizerDA{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
-	optimizerDB.load_state_dict(torch.load(f"{path}/optimizerDB{InitEpoch-1:03}.pth", 
+	optimizerDB.load_state_dict(torch.load(f"{path}/optimizerDB{InitEpoch:03}.pth", 
 		map_location=device, weights_only=True, ))
 
 lrSchedulerG = torch.optim.lr_scheduler.LambdaLR(
@@ -258,7 +257,7 @@ dataLoader = DataLoader(
 
 valDataLoader = DataLoader(
 	ImageDataset(f'dataset', valTransform, mode='test'),
-	batch_size=7,
+	batch_size=5,
 	shuffle=True,
 )
 
@@ -272,10 +271,10 @@ def sampleImages(batchesDone):
 		realB = imgs['B'].to(device)
 		fakeA = GBA(realB)
 
-		realA = make_grid(realA, nrow=7, normalize=True)
-		realB = make_grid(realB, nrow=7, normalize=True)
-		fakeA = make_grid(fakeA, nrow=7, normalize=True)
-		fakeB = make_grid(fakeB, nrow=7, normalize=True)
+		realA = make_grid(realA, nrow=5, normalize=True)
+		realB = make_grid(realB, nrow=5, normalize=True)
+		fakeA = make_grid(fakeA, nrow=5, normalize=True)
+		fakeB = make_grid(fakeB, nrow=5, normalize=True)
 
 		imageGrid = torch.cat((realA, fakeB, realB, fakeA), 1)
 		save_image(imageGrid, f"images/{batchesDone:08}.png", normalize=False)
@@ -283,7 +282,8 @@ def sampleImages(batchesDone):
 	GBA.train()
 
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
-for epoch in range(InitEpoch, Epochs):
+epoch = InitEpoch
+while epoch < Epochs:
 	for i, batch in enumerate(dataLoader):
 		# get images from data set
 		realA = batch['A'].to(device)
@@ -337,7 +337,7 @@ for epoch in range(InitEpoch, Epochs):
 		deltaTime = (time.time()-timeStamp)/((epoch-InitEpoch)*epochSize+(i+1)*BatchSize)
 		timeLeft = datetime.timedelta(seconds=batchesLeft*deltaTime)
 
-		print(f"\r[{epoch}/{Epochs}][{i}/{len(dataLoader)}]",
+		print(f"\r[{epoch+1}/{Epochs}][{i+1}/{len(dataLoader)}]",
 			f"D:{lossD.item():.2f},",
 			f"GAN:{lossG.item():.2f},",
 			f"Cyc:{lossCycle.item():.2f},",
@@ -351,7 +351,8 @@ for epoch in range(InitEpoch, Epochs):
 	lrSchedulerDA.step()
 	lrSchedulerDB.step()
 
-	if (epoch+1)%CheckPointInterval == 0:
+	epoch += 1
+	if epoch%CheckPointInterval == 0:
 		path = "saved_models"
 		torch.save(GAB.state_dict(), f"{path}/GAB{epoch:03}.pth")
 		torch.save(GBA.state_dict(), f"{path}/GBA{epoch:03}.pth")
