@@ -40,7 +40,7 @@ def loadImage(fileName):
 
 # image dataset class
 class ImageDataset(Dataset):
-	def __init__(self, root, trans, unaligned=False, mode='train'):
+	def __init__(self, root, trans, unaligned=True, mode='train'):
 		self.transform = transforms.Compose(trans)
 		self.unaligned = unaligned
 		self.filesA = sorted(glob.glob(os.path.join(root, f'{mode}A')+'/*.*'))
@@ -251,13 +251,13 @@ valTransform = [
 ]
 
 dataLoader = DataLoader(
-	ImageDataset(f"dataset", trainTransform, unaligned=True),
+	ImageDataset(f"dataset", trainTransform, ),
 	batch_size=BatchSize,
 	shuffle=True,
 )
 
 valDataLoader = DataLoader(
-	ImageDataset(f'dataset', valTransform, mode='test'),
+	ImageDataset(f'dataset', valTransform, mode='test', ),
 	batch_size=5,
 	shuffle=True,
 )
@@ -284,15 +284,14 @@ def sampleImages(batchesDone):
 
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 epoch = InitEpoch
+# make valid and fake target
+valid = torch.ones((realA.size(0), *DA.outputShape), device=device)
+fake = torch.zeros((realA.size(0), *DA.outputShape), device=device)
 while epoch < Epochs:
 	for i, batch in enumerate(dataLoader):
 		# get images from data set
 		realA = batch['A'].to(device)
 		realB = batch['B'].to(device)
-
-		# make valid and fake target
-		valid = torch.ones((realA.size(0), *DA.outputShape), device=device)
-		fake = torch.zeros((realA.size(0), *DA.outputShape), device=device)
 
 		optimizerG.zero_grad()
 
