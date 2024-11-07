@@ -285,8 +285,8 @@ def sampleImages(batchesDone):
 timeStamp, epochSize = time.time(), len(dataLoader)*BatchSize
 epoch = InitEpoch
 # make valid and fake target
-valid = torch.ones((1, ImgHeight, ImgWidth, *DA.outputShape), device=device)
-fake = torch.zeros((1, ImgHeight, ImgWidth, *DA.outputShape), device=device)
+valid = torch.ones((BatchSize, *DA.outputShape), device=device)
+fake = torch.zeros((BatchSize, *DA.outputShape), device=device)
 while epoch < Epochs:
 	for i, batch in enumerate(dataLoader):
 		# get images from data set
