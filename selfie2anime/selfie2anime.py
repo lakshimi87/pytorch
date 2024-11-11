@@ -103,7 +103,7 @@ class GeneratorResNet(nn.Module):
 		for _ in range(2):
 			inFeatures, outFeatures = outFeatures, outFeatures*2
 			model += [
-				nn.Conv2d(inFeatures, outFeatures, 3, stride=2, padding=1),
+				nn.Conv2d(inFeatures, outFeatures, 3, 2, 1),
 				nn.InstanceNorm2d(outFeatures),
 				nn.ReLU(inplace=True),
 			]
@@ -115,14 +115,16 @@ class GeneratorResNet(nn.Module):
 			inFeatures, outFeatures = outFeatures, outFeatures//2
 			model += [
 				nn.Upsample(scale_factor=2),
-				nn.Conv2d(inFeatures, outFeatures, 3, stride=1, padding=1),
+				nn.Conv2d(inFeatures, outFeatures, 3, 1, 1),
 				nn.InstanceNorm2d(outFeatures),
 				nn.ReLU(inplace=True),
 			]
 
-		model += [nn.ReflectionPad2d(channels), 
+		model += [
+			nn.ReflectionPad2d(channels), 
 			nn.Conv2d(outFeatures, channels, 7),
-			nn.Tanh()]
+			nn.Tanh(inplace=True)
+		]
 		self.model = nn.Sequential(*model)
 	
 	def forward(self, x):
@@ -157,7 +159,8 @@ class Discriminator(nn.Module):
 
 Channels = 3
 ImgHeight, ImgWidth = 256, 256
-ResidualBlocks = 11
+ResidualBlocksAB = 9
+ResidualBlocksBA = 13
 LearningRate = 0.0002
 BetaTuple = (0.5, 0.999)
 Epochs = 500
@@ -177,8 +180,8 @@ criterionCycle = nn.L1Loss().to(device)
 criterionIdentity = nn.L1Loss().to(device)
 
 inputShape = (Channels, ImgHeight, ImgWidth)
-GAB = GeneratorResNet(inputShape, ResidualBlocks).to(device)
-GBA = GeneratorResNet(inputShape, ResidualBlocks).to(device)
+GAB = GeneratorResNet(inputShape, ResidualBlocksAB).to(device)
+GBA = GeneratorResNet(inputShape, ResidualBlocksBA).to(device)
 DA = Discriminator(inputShape).to(device)
 DB = Discriminator(inputShape).to(device)
 
