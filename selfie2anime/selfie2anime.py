@@ -123,7 +123,7 @@ class GeneratorResNet(nn.Module):
 		model += [
 			nn.ReflectionPad2d(channels), 
 			nn.Conv2d(outFeatures, channels, 7),
-			nn.Tanh(inplace=True)
+			nn.Tanh()
 		]
 		self.model = nn.Sequential(*model)
 	
