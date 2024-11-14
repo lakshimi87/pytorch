@@ -159,7 +159,7 @@ class Discriminator(nn.Module):
 
 Channels = 3
 ImgHeight, ImgWidth = 256, 256
-ResidualBlocksAB = 9
+ResidualBlocksAB = 7
 ResidualBlocksBA = 13
 LearningRate = 0.0002
 BetaTuple = (0.5, 0.999)
